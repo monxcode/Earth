@@ -6,6 +6,7 @@
     <title>Earth's Mood Ring 3D</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
@@ -14,25 +15,28 @@
             margin: 0;
             overflow: hidden;
             font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: #050505;
+            background-color: #020205;
             color: white;
+            transition: background 2s ease;
         }
 
         .glass {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(12px);
+            background: rgba(10, 10, 20, 0.4);
+            backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 24px;
         }
 
-        .mood-happy { --mood-color: #00ff88; --mood-bg: rgba(0, 255, 136, 0.1); }
-        .mood-neutral { --mood-color: #00d1ff; --mood-bg: rgba(0, 209, 255, 0.1); }
-        .mood-sad { --mood-color: #ffaa00; --mood-bg: rgba(255, 170, 0, 0.1); }
-        .mood-critical { --mood-color: #ff3366; --mood-bg: rgba(255, 51, 102, 0.1); }
+        /* Weather Based Themes */
+        .weather-sunny { background: radial-gradient(circle at center, #1a1a0a 0%, #020205 100%); }
+        .weather-rainy { background: radial-gradient(circle at center, #0a1a1a 0%, #020205 100%); }
+        .weather-snowy { background: radial-gradient(circle at center, #1a1a2a 0%, #020205 100%); }
+        .weather-cloudy { background: radial-gradient(circle at center, #1a1a1a 0%, #020205 100%); }
 
-        .mood-border { border-color: var(--mood-color); }
-        .mood-text { color: var(--mood-color); }
-        .mood-glow { box-shadow: 0 0 20px var(--mood-bg); }
+        .mood-happy { --mood-color: #00ff88; --mood-bg: rgba(0, 255, 136, 0.2); }
+        .mood-neutral { --mood-color: #00d1ff; --mood-bg: rgba(0, 209, 255, 0.2); }
+        .mood-sad { --mood-color: #ffaa00; --mood-bg: rgba(255, 170, 0, 0.2); }
+        .mood-critical { --mood-color: #ff3366; --mood-bg: rgba(255, 51, 102, 0.2); }
 
         #canvas-container {
             position: fixed;
@@ -51,357 +55,420 @@
 
         .interactive { pointer-events: auto; }
 
-        input, button {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        .loader-screen {
+            background: radial-gradient(circle at center, #111, #000);
         }
 
-        .shimmer {
-            background: linear-gradient(90deg, #111 25%, #222 50%, #111 75%);
-            background-size: 200% 100%;
-            animation: shimmer 1.5s infinite;
+        /* Suggestions List Style */
+        #suggestions-box {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 8px;
+            max-height: 250px;
+            overflow-y: auto;
+            z-index: 50;
+            display: none;
         }
 
-        @keyframes shimmer {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
+        .suggestion-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.2s;
         }
 
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+        .suggestion-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            padding-left: 20px;
+        }
+
+        .suggestion-item:last-child { border-bottom: none; }
+
+        /* Noise Level Indicator Animation */
+        @keyframes ripple {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        .noise-pulse {
+            animation: ripple 1.5s infinite;
+        }
     </style>
 </head>
-<body class="mood-neutral">
+<body class="mood-neutral weather-sunny">
 
-    <div id="loader" class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-6">
-        <div class="w-24 h-24 rounded-full border-4 border-t-cyan-500 border-r-transparent border-b-transparent border-l-transparent animate-spin mb-8"></div>
-        <h1 class="text-3xl font-extrabold tracking-tighter mb-2">CALIBRATING EARTH...</h1>
-        <p class="text-zinc-500 animate-pulse">Fetching environmental bio-metrics</p>
+    <div id="loader" class="fixed inset-0 z-[100] loader-screen flex flex-col items-center justify-center p-6 transition-opacity duration-1000">
+        <div class="w-24 h-24 rounded-full border-4 border-t-blue-500 border-r-transparent border-b-transparent border-l-transparent animate-spin mb-8"></div>
+        <h1 class="text-3xl font-extrabold tracking-tighter mb-2 uppercase">Analysis Engine</h1>
+        <p class="text-zinc-500 animate-pulse uppercase text-xs tracking-[0.3em]">Mapping Biosphere & Soundscapes</p>
     </div>
 
     <div id="canvas-container"></div>
 
     <main class="ui-layer min-h-screen flex flex-col justify-between p-4 md:p-8">
-        <!-- Header Section -->
         <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div class="interactive glass p-4 px-6 flex items-center gap-4">
-                <div id="mood-indicator" class="w-4 h-4 rounded-full mood-glow mood-happy bg-[var(--mood-color)] animate-ping"></div>
+                <div id="mood-indicator" class="w-4 h-4 rounded-full bg-[var(--mood-color)] transition-colors duration-1000 shadow-[0_0_20px_var(--mood-bg)]"></div>
                 <div>
-                    <h1 class="font-bold text-xl tracking-tight">EARTH'S MOOD</h1>
-                    <p id="current-mood-label" class="text-xs uppercase tracking-[0.2em] opacity-60">Status: Healthy</p>
+                    <h1 class="font-bold text-xl tracking-tight uppercase">Planet Health</h1>
+                    <p id="weather-status" class="text-[10px] uppercase tracking-[0.2em] opacity-60">Scanning Bio-Metrics</p>
                 </div>
             </div>
 
-            <div class="interactive glass p-2 flex items-center">
-                <input id="location-input" type="text" placeholder="Search City..." class="bg-transparent border-none outline-none px-4 py-2 w-48 md:w-64 text-sm font-medium">
-                <button id="search-btn" class="bg-white/10 hover:bg-white/20 p-2 px-4 rounded-xl text-sm font-bold uppercase transition-all">Go</button>
+            <div class="relative w-full md:w-auto">
+                <div class="interactive glass p-2 flex items-center">
+                    <input id="location-input" type="text" autocomplete="off" placeholder="Search City/Country..." class="bg-transparent border-none outline-none px-4 py-2 w-full md:w-72 text-sm font-medium placeholder:text-white/20">
+                    <button id="search-btn" class="bg-blue-600/40 hover:bg-blue-500/60 p-2 px-6 rounded-xl text-xs font-bold uppercase transition-all backdrop-blur-md">Explore</button>
+                </div>
+                <div id="suggestions-box" class="interactive glass backdrop-blur-xl border border-white/10 shadow-2xl"></div>
             </div>
         </header>
 
-        <!-- Stats Panel -->
-        <div class="flex flex-col md:flex-row items-end justify-between gap-6">
-            <div class="interactive glass p-6 w-full md:w-80 flex flex-col gap-4">
-                <h2 class="font-bold text-lg border-b border-white/10 pb-2">Global Vitals</h2>
+        <div class="flex flex-col lg:flex-row items-end justify-between gap-6">
+            <!-- Weather & AQI Card -->
+            <div class="interactive glass p-6 w-full md:w-80 flex flex-col gap-5 border-l-4 border-l-[var(--mood-color)] transition-all">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h2 id="target-city" class="font-bold text-lg uppercase tracking-tight">London</h2>
+                        <p id="target-country" class="text-[10px] uppercase opacity-40 font-bold tracking-widest">United Kingdom</p>
+                    </div>
+                    <span id="weather-icon" class="text-2xl">☀️</span>
+                </div>
                 
-                <div class="flex justify-between items-center">
-                    <span class="text-sm opacity-60">Temperature</span>
-                    <span id="stat-temp" class="font-bold text-cyan-400">22°C</span>
-                </div>
-                <div class="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
-                    <div id="bar-temp" class="h-full bg-cyan-400 w-1/2 transition-all duration-700"></div>
-                </div>
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-[10px] uppercase font-bold">Temperature</span>
+                            <span id="stat-temp" class="font-bold text-blue-400">--°C</span>
+                        </div>
+                        <div class="w-full bg-white/5 h-1 rounded-full overflow-hidden">
+                            <div id="bar-temp" class="h-full bg-blue-400 w-0 transition-all duration-1000"></div>
+                        </div>
+                    </div>
 
-                <div class="flex justify-between items-center">
-                    <span class="text-sm opacity-60">Air Quality (AQI)</span>
-                    <span id="stat-aqi" class="font-bold text-emerald-400">Good (12)</span>
-                </div>
-                <div class="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
-                    <div id="bar-aqi" class="h-full bg-emerald-400 w-[15%] transition-all duration-700"></div>
-                </div>
-
-                <div class="flex justify-between items-center">
-                    <span class="text-sm opacity-60">Carbon Density</span>
-                    <span id="stat-carbon" class="font-bold text-rose-400">Nominal</span>
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-[10px] uppercase font-bold">AQI (Pollution)</span>
+                            <span id="stat-aqi" class="font-bold text-emerald-400">--</span>
+                        </div>
+                        <div class="w-full bg-white/5 h-1 rounded-full overflow-hidden">
+                            <div id="bar-aqi" class="h-full bg-emerald-400 w-0 transition-all duration-1000"></div>
+                        </div>
+                        <p id="aqi-category" class="text-[8px] uppercase mt-1 tracking-widest opacity-60">Status: Analyzing</p>
+                    </div>
                 </div>
             </div>
 
+            <!-- Noise Pollution Card (New) -->
+            <div class="interactive glass p-6 w-full md:w-80 flex flex-col gap-4 border-r-4 border-r-purple-500 transition-all">
+                <div class="flex items-center gap-3">
+                    <div class="relative flex items-center justify-center">
+                        <div class="w-3 h-3 bg-purple-500 rounded-full z-10"></div>
+                        <div id="noise-ring" class="absolute w-3 h-3 border border-purple-400 rounded-full noise-pulse"></div>
+                    </div>
+                    <h2 class="font-bold text-[10px] uppercase tracking-[0.2em] opacity-80">Noise Pollution</h2>
+                </div>
+
+                <div class="flex items-baseline gap-2">
+                    <span id="stat-noise" class="text-4xl font-black tracking-tighter">--</span>
+                    <span class="text-xs font-bold opacity-40">dB</span>
+                </div>
+
+                <div>
+                    <div class="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+                        <div id="bar-noise" class="h-full bg-purple-500 w-0 transition-all duration-1000"></div>
+                    </div>
+                    <div class="flex justify-between mt-2">
+                        <span id="noise-status" class="text-[9px] font-bold uppercase tracking-widest text-purple-300">Calculating...</span>
+                        <span id="noise-level-text" class="text-[9px] opacity-40 uppercase">Acoustic Map</span>
+                    </div>
+                </div>
+
+                <p id="noise-tip" class="text-[8px] leading-relaxed opacity-40 italic border-t border-white/5 pt-2">
+                    Estimated based on urban density and weather conditions.
+                </p>
+            </div>
+
+            <!-- Time & Climate Card -->
             <div class="interactive flex flex-col gap-3 items-end">
-                <div class="glass p-4 text-right">
-                    <p id="local-time" class="text-2xl font-black tracking-tighter">00:00:00</p>
-                    <p id="local-date" class="text-[10px] uppercase opacity-40 tracking-widest">Planet Earth • 2024</p>
+                <div class="glass p-4 text-right min-w-[180px]">
+                    <p id="local-time" class="text-3xl font-black tracking-tighter tabular-nums">00:00:00</p>
+                    <p id="local-date" class="text-[9px] uppercase opacity-40 tracking-[0.3em]">Earth Network</p>
                 </div>
-                
-                <div class="flex gap-2">
-                    <button class="glass p-3 px-6 text-xs font-bold uppercase hover:bg-white/10 transition-all">Share Mood</button>
-                    <button id="toggle-rotation" class="glass p-3 px-6 text-xs font-bold uppercase hover:bg-white/10 transition-all">Pause Spin</button>
-                </div>
+                <div id="weather-tag" class="bg-white/10 px-4 py-2 rounded-full text-[8px] uppercase tracking-widest font-bold border border-white/10">Climate: Stable</div>
             </div>
         </div>
     </main>
 
-    <div id="location-marker" class="fixed pointer-events-none hidden">
-        <div class="w-6 h-6 -ml-3 -mt-3 rounded-full border-2 border-white animate-ping"></div>
-        <div class="absolute top-8 left-1/2 -translate-x-1/2 whitespace-nowrap glass px-3 py-1 text-[10px] font-bold uppercase">Target Point</div>
-    </div>
-
     <script>
-        // --- CONFIG & STATE ---
-        let scene, camera, renderer, earth, clouds, stars, particles;
-        let isRotating = true;
-        let moodScore = 80; // 0-100 (100 is best)
-        let currentCity = "London";
-        let targetRotationX = 0;
-        let targetRotationY = 0;
+        let scene, camera, renderer, earth, clouds, stars, markerGroup, controls, sunLight;
+        const textureLoader = new THREE.TextureLoader();
+        const inputEl = document.getElementById('location-input');
+        const suggestBox = document.getElementById('suggestions-box');
 
-        // --- INITIALIZATION ---
         function initThree() {
             scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.z = 2.5;
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 4;
 
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-            // Lights
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.1);
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.8;
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
             scene.add(ambientLight);
 
-            const sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
             sunLight.position.set(5, 3, 5);
             scene.add(sunLight);
 
-            // Earth
-            const earthGeometry = new THREE.SphereGeometry(1, 64, 64);
-            const earthMaterial = new THREE.MeshPhongMaterial({
-                color: 0x2233ff,
-                emissive: 0x112244,
-                specular: 0x555555,
-                shininess: 5,
-                flatShading: false
-            });
-            earth = new THREE.Mesh(earthGeometry, earthMaterial);
-            scene.add(earth);
+            const earthGroup = new THREE.Group();
+            scene.add(earthGroup);
 
-            // Atmosphere / Clouds
-            const cloudGeometry = new THREE.SphereGeometry(1.03, 64, 64);
-            const cloudMaterial = new THREE.MeshPhongMaterial({
-                color: 0xffffff,
-                transparent: true,
-                opacity: 0.3
+            const earthGeo = new THREE.SphereGeometry(1, 64, 64);
+            const earthMat = new THREE.MeshPhongMaterial({
+                map: textureLoader.load('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg'),
+                bumpMap: textureLoader.load('https://unpkg.com/three-globe/example/img/earth-topology.png'),
+                bumpScale: 0.05,
+                specularMap: textureLoader.load('https://unpkg.com/three-globe/example/img/earth-waterbodies.png'),
+                specular: new THREE.Color('grey'),
+                shininess: 10
             });
-            clouds = new THREE.Mesh(cloudGeometry, cloudMaterial);
-            scene.add(clouds);
+            earth = new THREE.Mesh(earthGeo, earthMat);
+            earthGroup.add(earth);
 
-            // Stars
-            const starGeometry = new THREE.BufferGeometry();
-            const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.015 });
+            const cloudGeo = new THREE.SphereGeometry(1.015, 64, 64);
+            const cloudMat = new THREE.MeshPhongMaterial({
+                map: textureLoader.load('https://unpkg.com/three-globe/example/img/earth-clouds.png'),
+                transparent: true, opacity: 0.4, depthWrite: false
+            });
+            clouds = new THREE.Mesh(cloudGeo, cloudMat);
+            earthGroup.add(clouds);
+
+            markerGroup = new THREE.Group();
+            earthGroup.add(markerGroup);
+
+            const atmoGeo = new THREE.SphereGeometry(1.1, 64, 64);
+            const atmoMat = new THREE.ShaderMaterial({
+                vertexShader: `varying vec3 vNormal; void main() { vNormal = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+                fragmentShader: `varying vec3 vNormal; void main() { float intensity = pow(0.5 - dot(vNormal, vec3(0, 0, 1.0)), 2.0); gl_FragColor = vec4(0.3, 0.6, 1.0, 1.0) * intensity; }`,
+                side: THREE.BackSide, blending: THREE.AdditiveBlending, transparent: true
+            });
+            scene.add(new THREE.Mesh(atmoGeo, atmoMat));
+
+            const starGeo = new THREE.BufferGeometry();
             const starCoords = [];
-            for(let i=0; i<3000; i++) {
-                starCoords.push((Math.random()-0.5)*20, (Math.random()-0.5)*20, (Math.random()-0.5)*20);
-            }
-            starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starCoords, 3));
-            stars = new THREE.Points(starGeometry, starMaterial);
+            for(let i=0; i<4000; i++) starCoords.push((Math.random()-0.5)*100, (Math.random()-0.5)*100, (Math.random()-0.5)*100);
+            starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starCoords, 3));
+            stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0x888888, size: 0.05 }));
             scene.add(stars);
 
-            // Pollution Particles
-            createPollutionParticles(0);
-
             animate();
-            
-            // Initial Data Fetch
-            fetchData("London");
+            fetchData("London", "United Kingdom", 51.50, -0.12);
         }
 
-        function createPollutionParticles(count) {
-            if (particles) scene.remove(particles);
-            if (count === 0) return;
-
-            const partGeo = new THREE.BufferGeometry();
-            const partCoords = [];
-            for(let i=0; i<count; i++) {
-                const r = 1.05 + Math.random() * 0.2;
-                const phi = Math.random() * Math.PI * 2;
-                const theta = Math.random() * Math.PI;
-                partCoords.push(
-                    r * Math.sin(theta) * Math.cos(phi),
-                    r * Math.sin(theta) * Math.sin(phi),
-                    r * Math.cos(theta)
-                );
+        // Suggestions Logic
+        let debounceTimer;
+        inputEl.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            clearTimeout(debounceTimer);
+            if (query.length < 2) {
+                suggestBox.style.display = 'none';
+                return;
             }
-            partGeo.setAttribute('position', new THREE.Float32BufferAttribute(partCoords, 3));
-            const partMat = new THREE.PointsMaterial({ color: 0x666666, size: 0.01, transparent: true, opacity: 0.5 });
-            particles = new THREE.Points(partGeo, partMat);
-            scene.add(particles);
+            debounceTimer = setTimeout(() => getSuggestions(query), 300);
+        });
+
+        async function getSuggestions(query) {
+            try {
+                const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${query}&count=5`);
+                const data = await res.json();
+                if (data.results) {
+                    suggestBox.innerHTML = '';
+                    data.results.forEach(loc => {
+                        const div = document.createElement('div');
+                        div.className = 'suggestion-item';
+                        div.innerHTML = `<p class="text-xs font-bold">${loc.name}</p><p class="text-[10px] opacity-50">${loc.admin1 ? loc.admin1 + ', ' : ''}${loc.country}</p>`;
+                        div.onclick = () => {
+                            inputEl.value = loc.name;
+                            suggestBox.style.display = 'none';
+                            fetchData(loc.name, loc.country, loc.latitude, loc.longitude);
+                        };
+                        suggestBox.appendChild(div);
+                    });
+                    suggestBox.style.display = 'block';
+                }
+            } catch (e) { console.error(e); }
         }
 
-        // --- DATA FETCHING ---
-        async function fetchData(city) {
+        document.addEventListener('click', (e) => {
+            if (!inputEl.contains(e.target) && !suggestBox.contains(e.target)) suggestBox.style.display = 'none';
+        });
+
+        function interpretWeather(code) {
+            const map = {
+                0: { txt: "Clear Sky", icon: "☀️", theme: "weather-sunny" },
+                1: { txt: "Mainly Clear", icon: "🌤️", theme: "weather-sunny" },
+                2: { txt: "Partly Cloudy", icon: "⛅", theme: "weather-cloudy" },
+                3: { txt: "Overcast", icon: "☁️", theme: "weather-cloudy" },
+                45: { txt: "Foggy", icon: "🌫️", theme: "weather-cloudy" },
+                51: { txt: "Light Drizzle", icon: "🌦️", theme: "weather-rainy" },
+                61: { txt: "Rainy", icon: "🌧️", theme: "weather-rainy" },
+                71: { txt: "Snowing", icon: "❄️", theme: "weather-snowy" },
+                95: { txt: "Thunderstorm", icon: "⛈️", theme: "weather-rainy" }
+            };
+            return map[code] || { txt: "Unknown", icon: "🌍", theme: "weather-sunny" };
+        }
+
+        // Noise Calculation Logic (Simulated based on context)
+        function calculateEstimatedNoise(city, temp, aqi, weatherCode) {
+            // Base noise level for a city
+            let base = 45; 
+            
+            // Higher AQI usually means industrial/heavy traffic (Urban centers)
+            base += Math.min(aqi / 10, 25); 
+            
+            // Extreme temperatures often reduce outdoor street noise
+            if (temp > 35 || temp < 0) base -= 5;
+            
+            // Rain/Thunder increases natural noise
+            if (weatherCode >= 61) base += 10;
+            
+            // Random fluctuation for "live" feel
+            base += (Math.random() * 5);
+            
+            return Math.round(base);
+        }
+
+        async function fetchData(name, country, lat, lon) {
             try {
-                // Get Coordinates
-                const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1&language=en&format=json`);
-                const geoData = await geoRes.json();
-                
-                if (!geoData.results || geoData.results.length === 0) {
-                    showStatus("City not found", "critical");
-                    return;
+                if (!lat || !lon) {
+                    const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${name}&count=1`);
+                    const geoData = await geoRes.json();
+                    if (!geoData.results) return;
+                    lat = geoData.results[0].latitude;
+                    lon = geoData.results[0].longitude;
+                    country = geoData.results[0].country;
                 }
 
-                const { latitude, longitude, name } = geoData.results[0];
-                currentCity = name;
-
-                // Weather + Air Quality Parallel Fetch
                 const [weatherRes, aqRes] = await Promise.all([
-                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`),
-                    fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&current=pm2_5,pm10`)
+                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`),
+                    fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm2_5,us_aqi`)
                 ]);
 
-                const weatherData = await weatherRes.json();
-                const aqData = await aqRes.json();
+                const weather = await weatherRes.json();
+                const aq = await aqRes.json();
 
-                updateUI(weatherData.current_weather, aqData.current, name);
-                updateEarthMood(weatherData.current_weather.temperature, aqData.current.pm2_5);
-                rotateToLocation(latitude, longitude);
+                updateUI(weather.current_weather, aq.current, name, country);
+                createLocationMarker(lat, lon);
+                
+                const targetPos = latLonToVector3(lat, lon, 3.5);
+                gsap.to(camera.position, {
+                    x: targetPos.x, y: targetPos.y, z: targetPos.z,
+                    duration: 2, ease: "power2.inOut",
+                    onUpdate: () => camera.lookAt(0,0,0)
+                });
 
-                document.getElementById('loader').style.display = 'none';
-
-            } catch (error) {
-                console.error("Fetch error:", error);
-                showStatus("Network Error", "critical");
-            }
+                document.getElementById('loader').classList.add('opacity-0');
+                setTimeout(() => document.getElementById('loader').style.display = 'none', 1000);
+            } catch (e) { console.error(e); }
         }
 
-        function rotateToLocation(lat, lon) {
-            // Convert lat/lon to 3D rotation
+        function latLonToVector3(lat, lon, radius) {
             const phi = (90 - lat) * (Math.PI / 180);
             const theta = (lon + 180) * (Math.PI / 180);
-            
-            gsap.to(earth.rotation, {
-                x: phi - Math.PI/2,
-                y: -theta + Math.PI/2,
-                duration: 2,
-                ease: "power2.inOut"
-            });
-            isRotating = false;
-            document.getElementById('toggle-rotation').innerText = "Resume Spin";
+            return new THREE.Vector3(-radius * Math.sin(phi) * Math.cos(theta), radius * Math.cos(phi), radius * Math.sin(phi) * Math.sin(theta));
         }
 
-        function updateUI(weather, aq, name) {
-            document.getElementById('stat-temp').innerText = `${weather.temperature}°C`;
-            document.getElementById('bar-temp').style.width = `${Math.min(Math.max((weather.temperature + 10) * 2, 5), 100)}%`;
+        function createLocationMarker(lat, lon) {
+            while(markerGroup.children.length > 0) markerGroup.remove(markerGroup.children[0]);
+            const pos = latLonToVector3(lat, lon, 1.01);
+            const ringGeo = new THREE.RingGeometry(0.02, 0.03, 32);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0xff3366, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.position.copy(pos); ring.lookAt(0,0,0);
+            markerGroup.add(ring);
             
-            const pm25 = aq.pm2_5;
-            let aqStatus = "Good";
-            let aqColor = "#00ff88";
-            if (pm25 > 50) { aqStatus = "Moderate"; aqColor = "#ffaa00"; }
-            if (pm25 > 100) { aqStatus = "Unhealthy"; aqColor = "#ff3366"; }
-
-            document.getElementById('stat-aqi').innerText = `${aqStatus} (${Math.round(pm25)})`;
-            document.getElementById('stat-aqi').style.color = aqColor;
-            document.getElementById('bar-aqi').style.width = `${Math.min(pm25, 100)}%`;
-            document.getElementById('bar-aqi').style.backgroundColor = aqColor;
+            const pulseGeo = new THREE.RingGeometry(0.02, 0.03, 32);
+            const pulseMat = new THREE.MeshBasicMaterial({ color: 0xff3366, transparent: true, opacity: 0.5 });
+            const pulse = new THREE.Mesh(pulseGeo, pulseMat);
+            pulse.position.copy(pos); pulse.lookAt(0,0,0);
+            markerGroup.add(pulse);
+            gsap.to(pulse.scale, { x: 5, y: 5, duration: 2, repeat: -1 });
+            gsap.to(pulse.material, { opacity: 0, duration: 2, repeat: -1 });
         }
 
-        function updateEarthMood(temp, pm25) {
-            // Calculate a score out of 100
-            // Ideal: temp 20, pm25 < 10
-            let score = 100;
-            if (temp > 30) score -= (temp - 30) * 2;
-            if (temp < 0) score -= Math.abs(temp) * 1.5;
-            score -= pm25 * 0.5;
-            
-            score = Math.max(0, Math.min(100, score));
-            
-            const body = document.body;
-            const label = document.getElementById('current-mood-label');
-            const indicator = document.getElementById('mood-indicator');
+        function updateUI(weather, aq, name, country) {
+            const info = interpretWeather(weather.weathercode);
+            const temp = weather.temperature;
+            const aqiValue = Math.round(aq.us_aqi || (aq.pm2_5 * 2.5)); 
 
-            body.classList.remove('mood-happy', 'mood-neutral', 'mood-sad', 'mood-critical');
+            // Weather & Temp
+            document.getElementById('target-city').innerText = name;
+            document.getElementById('target-country').innerText = country;
+            document.getElementById('weather-icon').innerText = info.icon;
+            document.getElementById('weather-desc').innerText = info.txt;
+            document.getElementById('stat-temp').innerText = `${temp}°C`;
+            document.getElementById('bar-temp').style.width = `${Math.min(Math.max((temp + 10) * 2, 5), 100)}%`;
             
-            if (score > 80) {
-                body.classList.add('mood-happy');
-                label.innerText = "Status: Thriving";
-                earth.material.color.setHex(0x22ff88);
-                createPollutionParticles(0);
-            } else if (score > 50) {
-                body.classList.add('mood-neutral');
-                label.innerText = "Status: Stable";
-                earth.material.color.setHex(0x22aaff);
-                createPollutionParticles(100);
-            } else if (score > 25) {
-                body.classList.add('mood-sad');
-                label.innerText = "Status: Stressed";
-                earth.material.color.setHex(0xffaa22);
-                createPollutionParticles(500);
-            } else {
-                body.classList.add('mood-critical');
-                label.innerText = "Status: Critical";
-                earth.material.color.setHex(0xff3333);
-                createPollutionParticles(1500);
-            }
+            // Noise Level Calculation
+            const noise = calculateEstimatedNoise(name, temp, aqiValue, weather.weathercode);
+            document.getElementById('stat-noise').innerText = noise;
+            document.getElementById('bar-noise').style.width = `${(noise / 100) * 100}%`;
+            
+            let noiseStatus = "Quiet";
+            if(noise > 75) noiseStatus = "Extreme Noise";
+            else if(noise > 60) noiseStatus = "Moderate Noise";
+            else if(noise > 40) noiseStatus = "Living Area";
+            document.getElementById('noise-status').innerText = noiseStatus;
+            
+            // AQI UI
+            let aqiCategory = "Good", aqiColor = "#00ff88", mood = "happy";
+            if (aqiValue > 150) { aqiCategory = "Unhealthy"; aqiColor = "#ff3366"; mood = "critical"; }
+            else if (aqiValue > 100) { aqiCategory = "Sensitive"; aqiColor = "#ffaa00"; mood = "sad"; }
+            else if (aqiValue > 50) { aqiCategory = "Moderate"; aqiColor = "#ffff00"; mood = "neutral"; }
+
+            const aqiEl = document.getElementById('stat-aqi');
+            aqiEl.innerText = aqiValue; aqiEl.style.color = aqiColor;
+            document.getElementById('aqi-category').innerText = `Status: ${aqiCategory}`;
+            document.getElementById('bar-aqi').style.width = `${Math.min(aqiValue / 3, 100)}%`;
+            document.getElementById('bar-aqi').style.backgroundColor = aqiColor;
+
+            // Global Mood
+            document.body.className = `mood-${mood} ${info.theme}`;
+            document.getElementById('weather-tag').innerText = temp > 25 ? "Summer Condition" : (temp < 10 ? "Winter Condition" : "Stable Climate");
         }
 
-        function showStatus(msg, type) {
-            const label = document.getElementById('current-mood-label');
-            label.innerText = msg;
-            setTimeout(() => fetchData(currentCity), 3000);
-        }
-
-        // --- INTERACTION ---
-        document.getElementById('search-btn').addEventListener('click', () => {
-            const city = document.getElementById('location-input').value;
-            if (city) fetchData(city);
-        });
-
-        document.getElementById('location-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                const city = document.getElementById('location-input').value;
-                if (city) fetchData(city);
-            }
-        });
-
-        document.getElementById('toggle-rotation').addEventListener('click', () => {
-            isRotating = !isRotating;
-            document.getElementById('toggle-rotation').innerText = isRotating ? "Pause Spin" : "Resume Spin";
-        });
-
-        // --- ANIMATION LOOP ---
         function animate() {
             requestAnimationFrame(animate);
-
-            if (isRotating) {
-                earth.rotation.y += 0.002;
-                clouds.rotation.y += 0.0025;
-            } else {
-                clouds.rotation.y += 0.0005;
-            }
-
-            stars.rotation.y += 0.0002;
-
-            if (particles) {
-                particles.rotation.y += 0.001;
-            }
-
+            controls.update();
+            clouds.rotation.y += 0.0002;
+            stars.rotation.y += 0.00005;
             renderer.render(scene, camera);
         }
 
-        // --- UTILS ---
+        document.getElementById('search-btn').onclick = () => {
+            if(inputEl.value) fetchData(inputEl.value);
+        };
+
+        setInterval(() => {
+            document.getElementById('local-time').innerText = new Date().toLocaleTimeString('en-GB', { hour12: false });
+        }, 1000);
+
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        function updateClock() {
-            const now = new Date();
-            document.getElementById('local-time').innerText = now.toLocaleTimeString('en-GB', { hour12: false });
-            document.getElementById('local-date').innerText = `PLANET EARTH • ${now.getFullYear()}`;
-        }
-        setInterval(updateClock, 1000);
-
-        // Start App
         window.onload = initThree;
     </script>
 </body>
