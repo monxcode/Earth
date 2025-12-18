@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Earth's Mood Ring 3D</title>
+    <title>Earth's Mood Ring 3D - SVG Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -27,382 +27,231 @@
             border-radius: 24px;
         }
 
-        /* Dynamic Weather Backgrounds */
-        .weather-sunny { background: radial-gradient(circle at center, #1a1a0a 0%, #020205 100%); }
-        .weather-rainy { background: radial-gradient(circle at center, #0a1a1a 0%, #020205 100%); }
-        .weather-snowy { background: radial-gradient(circle at center, #1a1a2a 0%, #020205 100%); }
-        .weather-cloudy { background: radial-gradient(circle at center, #1a1a1a 0%, #020205 100%); }
+        /* Mood Backgrounds */
+        .mood-happy { --mood-color: #00ff88; }
+        .mood-neutral { --mood-color: #00d1ff; }
+        .mood-sad { --mood-color: #ffaa00; }
+        .mood-critical { --mood-color: #ff3366; }
 
-        /* Mood Based CSS Variables */
-        .mood-happy { --mood-color: #00ff88; --mood-bg: rgba(0, 255, 136, 0.2); }
-        .mood-neutral { --mood-color: #00d1ff; --mood-bg: rgba(0, 209, 255, 0.2); }
-        .mood-sad { --mood-color: #ffaa00; --mood-bg: rgba(255, 170, 0, 0.2); }
-        .mood-critical { --mood-color: #ff3366; --mood-bg: rgba(255, 51, 102, 0.2); }
-
-        #canvas-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-        }
-
-        .ui-layer {
-            position: relative;
-            z-index: 10;
-            pointer-events: none;
-        }
-
+        #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        .ui-layer { position: relative; z-index: 10; pointer-events: none; }
         .interactive { pointer-events: auto; }
 
-        .loader-screen {
-            background: radial-gradient(circle at center, #111, #000);
-            z-index: 9999;
-        }
-
+        /* Search Suggestions */
         #suggestions-box {
             position: absolute;
             top: 100%;
             left: 0;
             right: 0;
             margin-top: 8px;
-            max-height: 250px;
+            max-height: 200px;
             overflow-y: auto;
-            z-index: 50;
             display: none;
+            z-index: 100;
         }
 
         .suggestion-item {
-            padding: 12px 16px;
+            padding: 10px 15px;
             cursor: pointer;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            transition: all 0.2s;
         }
+        .suggestion-item:hover { background: rgba(255, 255, 255, 0.1); }
 
-        .suggestion-item:hover {
-            background: rgba(255, 255, 255, 0.1);
-            padding-left: 20px;
-        }
-
+        /* Side Menu */
         #side-menu {
             transform: translateX(100%);
             transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        #side-menu.active {
-            transform: translateX(0);
+        #side-menu.active { transform: translateX(0); }
+
+        /* Mood Overlay */
+        #mood-overlay {
+            display: none;
+            backdrop-filter: blur(20px);
+            z-index: 200;
         }
-        .menu-link {
-            transition: all 0.3s;
-            cursor: pointer;
-        }
-        .menu-link:hover {
-            background: rgba(255, 255, 255, 0.05);
-            padding-left: 12px;
-            color: var(--mood-color);
+        
+        .svg-float {
+            animation: floating 3s ease-in-out infinite;
+            filter: drop-shadow(0 0 20px var(--mood-color));
         }
 
-        .rank-card {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: all 0.3s;
-        }
-        .rank-card:hover {
-            background: rgba(255, 51, 102, 0.1);
-            border-color: rgba(255, 51, 102, 0.3);
+        @keyframes floating {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-15px) scale(1.05); }
         }
 
-        .wave-container {
-            display: flex;
-            align-items: flex-end;
-            gap: 2px;
-            height: 20px;
-        }
-        .wave-bar {
-            width: 3px;
-            background: #a855f7;
-            border-radius: 2px;
-            animation: wave 1s infinite ease-in-out;
-        }
-        @keyframes wave {
-            0%, 100% { height: 4px; }
-            50% { height: 18px; }
-        }
-
-        .toast {
-            position: fixed;
-            bottom: 2rem;
-            left: 50%;
-            transform: translateX(-50%) translateY(100px);
-            z-index: 1000;
-            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        .toast.show { transform: translateX(-50%) translateY(0); }
+        /* Scrollbar for Menu */
+        #side-menu::-webkit-scrollbar { width: 4px; }
+        #side-menu::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
     </style>
 </head>
-<body class="mood-neutral weather-sunny">
+<body class="mood-neutral">
 
-    <div id="toast" class="toast interactive glass px-8 py-4 text-xs font-bold tracking-widest uppercase border-t-2 border-t-[var(--mood-color)] shadow-2xl">
-        Mode Updated Successfully
-    </div>
-
-    <!-- Side Menu Overlay -->
-    <div id="side-menu" class="fixed top-0 right-0 h-full w-full md:w-[400px] glass z-[100] rounded-none border-l border-white/10 p-6 flex flex-col gap-6 shadow-2xl overflow-y-auto">
-        <div class="flex justify-between items-center sticky top-0 bg-transparent backdrop-blur-md pb-4 border-b border-white/10 z-10">
-            <h2 class="font-black text-xl tracking-tighter uppercase">Earth Command</h2>
-            <button id="close-menu" class="interactive w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
-        </div>
-
-        <!-- Ranking Section -->
-        <section class="flex flex-col gap-4">
-            <div class="flex items-center justify-between">
-                <h3 class="text-[10px] uppercase tracking-[0.3em] font-bold text-red-500">Live Rankings: Most Polluted</h3>
-                <span class="text-[8px] opacity-40 bg-white/5 px-2 py-1 rounded">Updated Hourly</span>
-            </div>
+    <!-- Global Mood Overlay (Animated SVG Faces) -->
+    <div id="mood-overlay" class="fixed inset-0 flex items-center justify-center p-6">
+        <div class="glass max-w-sm w-full p-8 flex flex-col items-center text-center gap-6 relative">
+            <button id="close-mood" class="interactive absolute top-4 right-4 opacity-50 hover:opacity-100 transition-opacity font-bold">✕</button>
             
-            <div id="ranking-list" class="flex flex-col gap-2">
-                <div class="interactive rank-card p-3 rounded-2xl flex items-center justify-between group cursor-pointer" onclick="fetchData('Delhi', 'India', 28.61, 77.20)">
-                    <div class="flex items-center gap-3">
-                        <span class="text-sm font-black italic opacity-20 group-hover:opacity-100 group-hover:text-red-500 transition-all">01</span>
-                        <div>
-                            <p class="text-xs font-bold uppercase tracking-wide">Delhi</p>
-                            <p class="text-[8px] opacity-40 uppercase">India</p>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-[10px] font-black text-red-500">428 AQI</p>
-                    </div>
+            <div id="mood-svg-container" class="w-32 h-32 svg-float flex items-center justify-center">
+                <!-- SVG will be injected here -->
+            </div>
+
+            <div>
+                <h2 id="emoji-status" class="text-xl font-bold uppercase tracking-widest text-[var(--mood-color)]">Earth is Neutral</h2>
+                <div class="w-24 h-1 bg-[var(--mood-color)] mx-auto mt-2 rounded-full opacity-30"></div>
+            </div>
+
+            <p id="emoji-desc" class="text-xs opacity-60 leading-relaxed px-2">Global average pollution is currently within manageable limits. Hum thoda better kar sakte hain!</p>
+            
+            <div class="flex gap-4 mt-2">
+                <div class="glass p-3 px-5">
+                    <p class="text-[8px] uppercase font-bold opacity-40">Global Impact</p>
+                    <p id="mood-impact-label" class="text-sm font-black italic">MODERATE</p>
                 </div>
-
-                <div class="interactive rank-card p-3 rounded-2xl flex items-center justify-between group cursor-pointer" onclick="fetchData('Lahore', 'Pakistan', 31.52, 74.35)">
-                    <div class="flex items-center gap-3">
-                        <span class="text-sm font-black italic opacity-20 group-hover:opacity-100 group-hover:text-orange-500 transition-all">02</span>
-                        <div>
-                            <p class="text-xs font-bold uppercase tracking-wide">Lahore</p>
-                            <p class="text-[8px] opacity-40 uppercase">Pakistan</p>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-[10px] font-black text-orange-500">386 AQI</p>
-                    </div>
-                </div>
-
-                <div class="interactive rank-card p-3 rounded-2xl flex items-center justify-between group cursor-pointer" onclick="fetchData('Hotan', 'China', 37.11, 79.91)">
-                    <div class="flex items-center gap-3">
-                        <span class="text-sm font-black italic opacity-20 group-hover:opacity-100 group-hover:text-yellow-500 transition-all">03</span>
-                        <div>
-                            <p class="text-xs font-bold uppercase tracking-wide">Hotan</p>
-                            <p class="text-[8px] opacity-40 uppercase">China</p>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-[10px] font-black text-yellow-500">321 AQI</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <nav class="flex flex-col gap-1 border-t border-white/5 pt-6">
-             <p class="text-[10px] uppercase tracking-[0.3em] font-bold opacity-30 mb-2">Operations</p>
-            <div id="btn-global" class="interactive menu-link p-3 rounded-xl font-bold text-[11px] uppercase tracking-widest flex items-center justify-between">
-                <span>Global Overview</span>
-                <span class="text-[8px] opacity-40">Reset View</span>
-            </div>
-            <div id="btn-atmosphere" class="interactive menu-link p-3 rounded-xl font-bold text-[11px] uppercase tracking-widest flex items-center justify-between">
-                <span>Atmosphere Layers</span>
-                <span id="label-clouds" class="text-[8px] px-2 py-0.5 rounded bg-blue-500/20 text-blue-400">ON</span>
-            </div>
-            <div id="btn-nature" class="interactive menu-link p-3 rounded-xl font-bold text-[11px] uppercase tracking-widest flex items-center justify-between">
-                <span>Bio-Diversity Map</span>
-                <span id="label-bio" class="text-[8px] px-2 py-0.5 rounded bg-white/5">Nature Mode</span>
-            </div>
-            <div id="btn-satellite" class="interactive menu-link p-3 rounded-xl font-bold text-[11px] uppercase tracking-widest flex items-center justify-between">
-                <span>Satellite Feed</span>
-                <span id="label-sat" class="text-[8px] px-2 py-0.5 rounded bg-white/5">Grid View</span>
-            </div>
-        </nav>
-
-        <div class="mt-auto bg-white/5 p-4 rounded-2xl border border-white/5">
-            <div class="flex items-center gap-3">
-                <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                <span class="text-[9px] font-bold uppercase tracking-widest">Biosphere Feed: Active</span>
             </div>
         </div>
     </div>
 
-    <!-- Loading Overlay -->
-    <div id="loader" class="fixed inset-0 loader-screen flex flex-col items-center justify-center p-6 transition-opacity duration-1000">
-        <div class="w-24 h-24 rounded-full border-4 border-t-blue-500 border-r-transparent border-b-transparent border-l-transparent animate-spin mb-8"></div>
-        <h1 class="text-3xl font-extrabold tracking-tighter mb-2 uppercase italic">Biosphere Sync</h1>
-        <p class="text-zinc-500 animate-pulse uppercase text-xs tracking-[0.3em]">Connecting to Earth Nodes...</p>
-        <button id="skip-loader" class="mt-8 text-[10px] uppercase tracking-widest opacity-30 hover:opacity-100 transition-opacity interactive underline">Force Start</button>
+    <!-- Side Menu -->
+    <div id="side-menu" class="fixed top-0 right-0 h-full w-full md:w-80 glass z-[100] rounded-none border-l border-white/10 p-6 flex flex-col gap-6 shadow-2xl overflow-y-auto">
+        <div class="flex justify-between items-center border-b border-white/10 pb-4">
+            <h2 class="font-black text-lg uppercase tracking-tight">Earth Menu</h2>
+            <button id="close-menu" class="interactive p-2">✕</button>
+        </div>
+
+        <div id="check-mood-btn" class="interactive bg-gradient-to-br from-indigo-600 to-purple-700 p-5 rounded-2xl cursor-pointer text-center group">
+            <p class="text-[10px] font-bold uppercase tracking-widest mb-1 opacity-70">Emotional Status</p>
+            <h3 class="font-black uppercase tracking-tighter group-hover:scale-105 transition-transform flex items-center justify-center gap-2">
+                Check Earth Mood 
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+            </h3>
+        </div>
+
+        <div class="flex flex-col gap-3">
+            <div class="flex justify-between items-center px-1">
+                <p class="text-[10px] uppercase tracking-widest font-bold opacity-30">Top 10 Polluted Cities</p>
+                <span class="text-[8px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full font-bold animate-pulse">LIVE</span>
+            </div>
+            <div id="top-cities-list" class="flex flex-col gap-2">
+                <!-- Cities populated by JS -->
+            </div>
+        </div>
+
+        <nav class="flex flex-col gap-2 mt-4 border-t border-white/5 pt-4">
+            <button onclick="resetView()" class="interactive glass p-4 text-[10px] uppercase font-bold tracking-widest text-left hover:bg-white/5 transition-colors">Reset Global View</button>
+            <button onclick="toggleAtmosphere()" class="interactive glass p-4 text-[10px] uppercase font-bold tracking-widest text-left hover:bg-white/5 transition-colors">Toggle Clouds Layer</button>
+        </nav>
     </div>
 
     <div id="canvas-container"></div>
 
-    <main class="ui-layer min-h-screen flex flex-col justify-between p-4 md:p-8">
+    <main class="ui-layer min-h-screen flex flex-col justify-between p-6 md:p-10">
+        <!-- Top Bar: Search & Status -->
         <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div class="interactive glass p-4 px-6 flex items-center gap-4 border-t border-white/10">
-                <div id="mood-indicator" class="w-3 h-3 rounded-full bg-[var(--mood-color)] transition-colors duration-1000 shadow-[0_0_15px_var(--mood-bg)]"></div>
+            <div class="interactive glass p-4 px-6 border-t-2 border-[var(--mood-color)] flex items-center gap-4 transition-all">
+                <div class="w-3 h-3 rounded-full bg-[var(--mood-color)] shadow-[0_0_15px_var(--mood-color)]"></div>
                 <div>
-                    <h1 class="font-bold text-sm tracking-widest uppercase">Earth Health</h1>
-                    <p id="weather-status" class="text-[9px] uppercase tracking-[0.1em] opacity-50">Metric: AQI / TEMP / NOISE</p>
+                    <h1 class="text-xs font-bold uppercase tracking-widest">Earth Pulse</h1>
+                    <p id="weather-label" class="text-[10px] opacity-50 uppercase tracking-tighter">Connecting to Satellites...</p>
                 </div>
             </div>
 
             <div class="flex items-center gap-3 w-full md:w-auto">
                 <div class="relative flex-1 md:flex-none">
-                    <div class="interactive glass p-1.5 flex items-center">
-                        <input id="location-input" type="text" autocomplete="off" placeholder="Type city..." class="bg-transparent border-none outline-none px-4 py-2 w-full md:w-64 text-sm font-medium placeholder:text-white/20">
-                        <button id="search-btn" class="bg-white/10 hover:bg-white/20 p-2 px-6 rounded-xl text-[10px] font-bold uppercase transition-all">Search</button>
+                    <div class="interactive glass p-2 flex items-center px-4">
+                        <input id="location-input" type="text" placeholder="Search Global Cities..." class="bg-transparent border-none outline-none text-sm w-full md:w-56 placeholder:text-white/30">
+                        <button id="search-btn" class="ml-2 opacity-50 hover:opacity-100">🔍</button>
                     </div>
-                    <div id="suggestions-box" class="interactive glass backdrop-blur-3xl border border-white/10 shadow-2xl"></div>
+                    <div id="suggestions-box" class="interactive glass"></div>
                 </div>
-                
-                <button id="open-menu" class="interactive glass p-4 w-12 h-12 flex flex-col gap-1.5 items-center justify-center hover:bg-white/10 transition-all">
-                    <div class="w-5 h-0.5 bg-white rounded-full"></div>
-                    <div class="w-5 h-0.5 bg-white rounded-full opacity-60"></div>
-                    <div class="w-5 h-0.5 bg-white rounded-full"></div>
-                </button>
+                <button id="open-menu" class="interactive glass p-3 w-12 h-12 flex items-center justify-center hover:bg-white/10 transition-colors">☰</button>
             </div>
         </header>
 
-        <div class="flex flex-col lg:flex-row items-stretch justify-between gap-6">
-            <div class="interactive glass p-6 w-full md:w-96 flex flex-col gap-6 border-l-2 border-l-[var(--mood-color)] transition-all">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <h2 id="target-city" class="font-bold text-2xl tracking-tighter uppercase">London</h2>
-                        <p id="target-country" class="text-[10px] uppercase opacity-40 font-bold tracking-widest">United Kingdom</p>
-                    </div>
-                    <div class="flex flex-col items-end">
-                        <span id="weather-icon" class="text-3xl mb-1">☀️</span>
-                        <span id="weather-desc" class="text-[8px] uppercase tracking-widest opacity-60">Sunny</span>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
-                        <p class="text-[9px] uppercase font-bold opacity-40 mb-2">Temperature</p>
-                        <div class="flex items-baseline gap-1">
-                            <span id="stat-temp" class="text-3xl font-black tabular-nums">--</span>
-                            <span class="text-xs font-bold text-blue-400">°C</span>
+        <!-- Main Dashboard: AQI, Temp, Weather -->
+        <div class="flex flex-col lg:flex-row items-end justify-between gap-6">
+            
+            <div class="flex flex-col gap-4 w-full md:w-96">
+                <!-- Location & Weather Info -->
+                <div class="interactive glass p-6 border-l-4 border-[var(--mood-color)] shadow-2xl">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h2 id="display-city" class="text-3xl font-black uppercase tracking-tighter">Mumbai</h2>
+                            <p id="display-country" class="text-[10px] uppercase opacity-40 font-bold tracking-[0.2em]">India</p>
+                        </div>
+                        <div class="text-right">
+                            <div id="weather-icon-svg" class="w-10 h-10 ml-auto mb-1 text-[var(--mood-color)]">
+                                <!-- Weather SVG will be updated via JS -->
+                            </div>
+                            <p id="display-desc" class="text-[9px] uppercase font-bold opacity-60 tracking-widest">Clear Sky</p>
                         </div>
                     </div>
-                    <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
-                        <p class="text-[9px] uppercase font-bold opacity-40 mb-2">AQI Level</p>
-                        <div class="flex items-baseline gap-1">
-                            <span id="stat-aqi" class="text-3xl font-black tabular-nums">--</span>
-                            <span class="text-[10px] font-bold opacity-40">US-AQI</span>
+                    
+                    <div class="grid grid-cols-2 gap-4 mt-6">
+                        <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
+                            <p class="text-[8px] uppercase font-bold opacity-40 mb-1">Temperature</p>
+                            <p class="text-2xl font-black"><span id="stat-temp">--</span><span class="text-xs ml-1 text-blue-400">°C</span></p>
+                        </div>
+                        <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
+                            <p class="text-[8px] uppercase font-bold opacity-40 mb-1">Air Quality</p>
+                            <p class="text-2xl font-black"><span id="stat-aqi">--</span><span class="text-[8px] ml-1 opacity-40 uppercase">US-AQI</span></p>
                         </div>
                     </div>
-                </div>
 
-                <div class="p-3 bg-white/5 rounded-xl border-dashed border border-white/10">
-                    <p id="aqi-category" class="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Air Status: Good</p>
-                    <p id="health-advice" class="text-[9px] opacity-40 mt-1 leading-relaxed">Perfect conditions for outdoor activities.</p>
+                    <!-- AQI Introduction Context -->
+                    <div class="mt-4 p-4 bg-white/5 rounded-2xl border border-dashed border-white/10">
+                        <div class="flex items-center gap-2 mb-2">
+                            <div class="w-2 h-2 rounded-full bg-[var(--mood-color)]"></div>
+                            <p id="aqi-status" class="text-[10px] font-bold uppercase tracking-wider">Analyzing Atmosphere...</p>
+                        </div>
+                        <p id="aqi-intro" class="text-[9px] opacity-50 leading-relaxed italic">AQI levels determine how safe the air is to breathe by measuring pollutants like PM2.5.</p>
+                    </div>
                 </div>
             </div>
 
-            <div class="interactive glass p-6 w-full md:w-80 flex flex-col gap-4 border-b-2 border-b-purple-500 transition-all relative overflow-hidden">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <div class="relative flex items-center justify-center">
-                            <div class="w-2 h-2 bg-purple-500 rounded-full z-10"></div>
-                            <div class="absolute w-2 h-2 border border-purple-400 rounded-full noise-pulse"></div>
-                        </div>
-                        <h2 class="font-bold text-[10px] uppercase tracking-[0.2em] opacity-80">Noise Pollution</h2>
-                    </div>
-                    <div class="wave-container" id="sound-wave">
-                        <div class="wave-bar" style="animation-delay: 0.1s"></div>
-                        <div class="wave-bar" style="animation-delay: 0.3s"></div>
-                        <div class="wave-bar" style="animation-delay: 0.2s"></div>
-                        <div class="wave-bar" style="animation-delay: 0.4s"></div>
-                        <div class="wave-bar" style="animation-delay: 0.1s"></div>
-                    </div>
+            <!-- Time & Global Tag -->
+            <div class="flex flex-col items-end gap-3">
+                <div class="glass p-5 text-right min-w-[200px]">
+                    <p id="clock" class="text-4xl font-black tracking-tighter tabular-nums">00:00:00</p>
+                    <p class="text-[9px] font-bold uppercase opacity-30 tracking-[0.4em]">Real-time Satellite Sync</p>
                 </div>
-
-                <div class="flex items-baseline gap-2 mt-2">
-                    <span id="stat-noise" class="text-5xl font-black tracking-tighter text-purple-400">--</span>
-                    <span class="text-xs font-bold opacity-40 uppercase">Decibels</span>
-                </div>
-                <div class="w-full bg-white/5 h-2 rounded-full overflow-hidden">
-                    <div id="bar-noise" class="h-full bg-gradient-to-r from-purple-600 to-pink-500 w-0 transition-all duration-1000"></div>
-                </div>
-            </div>
-
-            <div class="interactive flex flex-col gap-3 items-end">
-                <div class="glass p-5 text-right min-w-[200px] border-r-2 border-r-white/20">
-                    <p id="local-time" class="text-4xl font-black tracking-tighter tabular-nums mb-1">00:00:00</p>
-                    <p id="local-date" class="text-[9px] uppercase opacity-40 tracking-[0.4em] font-bold">Earth OS v2.5</p>
-                </div>
-                <div id="weather-tag" class="bg-[var(--mood-color)] text-black px-5 py-1.5 rounded-full text-[9px] uppercase tracking-widest font-black shadow-lg">Eco-Stable</div>
+                <div class="bg-white/10 px-6 py-2 rounded-full text-[10px] uppercase tracking-[0.3em] font-black border border-white/5 shadow-xl">Earth OS v3.5</div>
             </div>
         </div>
     </main>
 
     <script>
-        let scene, camera, renderer, earth, clouds, stars, markerGroup, controls, sunLight;
-        let isNatureMode = false, isSatelliteMode = false;
-
-        const loadingManager = new THREE.LoadingManager();
-        loadingManager.onLoad = () => hideLoader();
-
-        const textureLoader = new THREE.TextureLoader(loadingManager);
+        let scene, camera, renderer, earth, clouds, controls;
         const inputEl = document.getElementById('location-input');
         const suggestBox = document.getElementById('suggestions-box');
-        const sideMenu = document.getElementById('side-menu');
 
-        function showToast(msg) {
-            const toast = document.getElementById('toast');
-            toast.innerText = msg;
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 3000);
-        }
-
-        // Menu Logic
-        document.getElementById('open-menu').onclick = () => sideMenu.classList.add('active');
-        document.getElementById('close-menu').onclick = () => sideMenu.classList.remove('active');
-
-        // Functional Menu Options
-        document.getElementById('btn-global').onclick = () => {
-            sideMenu.classList.remove('active');
-            gsap.to(camera.position, { x: 0, y: 0, z: 4, duration: 2, ease: "power2.inOut" });
-            showToast("Global Perspective Restored");
+        // SVG Templates
+        const SVG_FACES = {
+            happy: `<svg viewBox="0 0 100 100" fill="none" stroke="#00ff88" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full"><circle cx="50" cy="50" r="45" stroke-opacity="0.2"/><path d="M30 40c0-2 4-5 4-5s4 3 4 5" /><path d="M62 40c0-2 4-5 4-5s4 3 4 5" /><path d="M30 65c5 10 35 10 40 0" /></svg>`,
+            neutral: `<svg viewBox="0 0 100 100" fill="none" stroke="#00d1ff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full"><circle cx="50" cy="50" r="45" stroke-opacity="0.2"/><line x1="33" y1="40" x2="43" y2="40" /><line x1="57" y1="40" x2="67" y2="40" /><line x1="35" y1="65" x2="65" y2="65" /></svg>`,
+            sad: `<svg viewBox="0 0 100 100" fill="none" stroke="#ffaa00" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full"><circle cx="50" cy="50" r="45" stroke-opacity="0.2"/><path d="M30 45c2-3 8-3 10 0" /><path d="M60 45c2-3 8-3 10 0" /><path d="M35 75c5-8 25-8 30 0" /></svg>`,
+            critical: `<svg viewBox="0 0 100 100" fill="none" stroke="#ff3366" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full"><circle cx="50" cy="50" r="45" stroke-opacity="0.2"/><line x1="30" y1="35" x2="45" y2="50" /><line x1="45" y1="35" x2="30" y2="50" /><line x1="55" y1="35" x2="70" y2="50" /><line x1="70" y1="35" x2="55" y2="50" /><path d="M35 70h30" /></svg>`
         };
 
-        document.getElementById('btn-atmosphere').onclick = () => {
-            clouds.visible = !clouds.visible;
-            const label = document.getElementById('label-clouds');
-            label.innerText = clouds.visible ? 'ON' : 'OFF';
-            label.className = `text-[8px] px-2 py-0.5 rounded ${clouds.visible ? 'bg-blue-500/20 text-blue-400' : 'bg-white/5'}`;
-            showToast(`Atmospheric Layers ${clouds.visible ? 'Enabled' : 'Disabled'}`);
+        const WEATHER_SVGS = {
+            sun: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`,
+            cloud: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>`,
+            haze: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="10" x2="21" y2="10"></line><line x1="3" y1="14" x2="21" y2="14"></line><line x1="3" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="21" y2="6"></line></svg>`
         };
 
-        document.getElementById('btn-nature').onclick = () => {
-            isNatureMode = !isNatureMode;
-            earth.material.color.set(isNatureMode ? 0x22ff88 : 0xffffff);
-            document.getElementById('label-bio').classList.toggle('bg-green-500/20');
-            document.getElementById('label-bio').classList.toggle('text-green-400');
-            showToast(`Nature Visualization: ${isNatureMode ? 'Active' : 'Standby'}`);
-        };
-
-        document.getElementById('btn-satellite').onclick = () => {
-            isSatelliteMode = !isSatelliteMode;
-            earth.material.wireframe = isSatelliteMode;
-            document.getElementById('label-sat').classList.toggle('bg-purple-500/20');
-            document.getElementById('label-sat').classList.toggle('text-purple-400');
-            showToast(`Satellite Grid: ${isSatelliteMode ? 'Active' : 'Standby'}`);
-        };
-
-        function hideLoader() {
-            const loader = document.getElementById('loader');
-            if (loader) {
-                loader.classList.add('opacity-0');
-                setTimeout(() => loader.style.display = 'none', 1000);
-            }
-        }
+        const pollutedCities = [
+            { name: "Delhi", country: "India", lat: 28.61, lon: 77.20 },
+            { name: "Lahore", country: "Pakistan", lat: 31.52, lon: 74.35 },
+            { name: "Beijing", country: "China", lat: 39.90, lon: 116.40 },
+            { name: "Dhaka", country: "Bangladesh", lat: 23.81, lon: 90.41 },
+            { name: "Mumbai", country: "India", lat: 19.07, lon: 72.87 },
+            { name: "Karachi", country: "Pakistan", lat: 24.86, lon: 67.00 },
+            { name: "Kolkata", country: "India", lat: 22.57, lon: 88.36 },
+            { name: "Baghdad", country: "Iraq", lat: 33.31, lon: 44.36 },
+            { name: "Cairo", country: "Egypt", lat: 30.04, lon: 31.23 },
+            { name: "Jakarta", country: "Indonesia", lat: -6.20, lon: 106.84 }
+        ];
 
         function initThree() {
             scene = new THREE.Scene();
@@ -411,7 +260,7 @@
 
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setPixelRatio(window.devicePixelRatio);
             document.getElementById('canvas-container').appendChild(renderer.domElement);
 
             controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -419,139 +268,211 @@
             controls.autoRotate = true;
             controls.autoRotateSpeed = 0.5;
 
+            const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+            sun.position.set(5, 3, 5);
+            scene.add(sun);
             scene.add(new THREE.AmbientLight(0xffffff, 0.4));
-            sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
-            sunLight.position.set(5, 3, 5);
-            scene.add(sunLight);
 
-            const earthGeo = new THREE.SphereGeometry(1, 64, 64);
-            const earthMat = new THREE.MeshPhongMaterial({
-                map: textureLoader.load('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg'),
-                bumpMap: textureLoader.load('https://unpkg.com/three-globe/example/img/earth-topology.png'),
-                bumpScale: 0.05,
-                specular: new THREE.Color('grey'),
-                shininess: 5
-            });
-            earth = new THREE.Mesh(earthGeo, earthMat);
+            const tex = new THREE.TextureLoader();
+            earth = new THREE.Mesh(
+                new THREE.SphereGeometry(1, 64, 64),
+                new THREE.MeshPhongMaterial({ 
+                    map: tex.load('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg'),
+                    bumpMap: tex.load('https://unpkg.com/three-globe/example/img/earth-topology.png'),
+                    bumpScale: 0.02
+                })
+            );
             scene.add(earth);
 
             clouds = new THREE.Mesh(
                 new THREE.SphereGeometry(1.02, 64, 64),
-                new THREE.MeshPhongMaterial({
-                    map: textureLoader.load('https://unpkg.com/three-globe/example/img/earth-clouds.png'),
-                    transparent: true, opacity: 0.3, depthWrite: false
+                new THREE.MeshPhongMaterial({ 
+                    map: tex.load('https://unpkg.com/three-globe/example/img/earth-clouds.png'), 
+                    transparent: true, 
+                    opacity: 0.3 
                 })
             );
             scene.add(clouds);
 
-            markerGroup = new THREE.Group();
-            scene.add(markerGroup);
-
-            const starCoords = [];
-            for(let i=0; i<3000; i++) starCoords.push((Math.random()-0.5)*100, (Math.random()-0.5)*100, (Math.random()-0.5)*100);
-            const starGeo = new THREE.BufferGeometry();
-            starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starCoords, 3));
-            stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0x444444, size: 0.04 }));
-            scene.add(stars);
-
+            populateTopCities();
             animate();
-            fetchData("London", "UK", 51.50, -0.12);
+            fetchData("Mumbai", "India", 19.07, 72.87);
         }
 
-        inputEl.addEventListener('input', async (e) => {
-            const query = e.target.value.trim();
-            if (query.length < 2) { suggestBox.style.display = 'none'; return; }
-            try {
-                const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${query}&count=5`);
-                const data = await res.json();
-                if (data.results) {
-                    suggestBox.innerHTML = '';
-                    data.results.forEach(loc => {
-                        const div = document.createElement('div');
-                        div.className = 'suggestion-item';
-                        div.innerHTML = `<p class="text-xs font-bold">${loc.name}</p><p class="text-[9px] opacity-40 uppercase">${loc.country}</p>`;
-                        div.onclick = () => {
-                            inputEl.value = loc.name;
-                            suggestBox.style.display = 'none';
-                            fetchData(loc.name, loc.country, loc.latitude, loc.longitude);
-                        };
-                        suggestBox.appendChild(div);
+        function populateTopCities() {
+            const list = document.getElementById('top-cities-list');
+            list.innerHTML = '';
+            pollutedCities.forEach((city, index) => {
+                const item = document.createElement('div');
+                item.className = "interactive glass p-3 text-[10px] flex justify-between cursor-pointer hover:bg-white/10 transition-colors border-l-2 border-transparent hover:border-red-500 group";
+                item.innerHTML = `
+                    <span class="font-bold opacity-60 group-hover:opacity-100">${(index+1).toString().padStart(2,'0')}. ${city.name}</span>
+                    <span class="text-red-400 font-black tracking-tighter opacity-70 group-hover:opacity-100">SYNCING...</span>
+                `;
+                item.onclick = () => fetchData(city.name, city.country, city.lat, city.lon);
+                list.appendChild(item);
+                
+                fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${city.lat}&longitude=${city.lon}&current=us_aqi`)
+                    .then(r => r.json())
+                    .then(d => {
+                        const aqi = d.current.us_aqi;
+                        item.querySelector('span:last-child').innerText = `${aqi} AQI`;
+                    }).catch(() => {
+                        item.querySelector('span:last-child').innerText = `N/A`;
                     });
-                    suggestBox.style.display = 'block';
-                }
-            } catch (e) {}
-        });
+            });
+        }
 
         async function fetchData(name, country, lat, lon) {
-            sideMenu.classList.remove('active');
+            document.getElementById('side-menu').classList.remove('active');
             try {
                 const [weatherRes, aqRes] = await Promise.all([
                     fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`),
-                    fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm2_5,us_aqi`)
+                    fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi,pm2_5`)
                 ]);
-                const weather = await weatherRes.json();
-                const aq = await aqRes.json();
-                updateUI(weather.current_weather, aq.current, name, country);
-                createLocationMarker(lat, lon);
-                const pos = latLonToVector3(lat, lon, 3.2);
-                gsap.to(camera.position, { x: pos.x, y: pos.y, z: pos.z, duration: 2.5, ease: "expo.out" });
-            } catch (e) {}
+                const weatherData = await weatherRes.json();
+                const aqData = await aqRes.json();
+
+                updateUI(name, country, weatherData.current_weather, aqData.current);
+                
+                const phi = (90 - lat) * (Math.PI / 180);
+                const theta = (lon + 180) * (Math.PI / 180);
+                const target = new THREE.Vector3(-3 * Math.sin(phi) * Math.cos(theta), 3 * Math.cos(phi), 3 * Math.sin(phi) * Math.sin(theta));
+                gsap.to(camera.position, { x: target.x, y: target.y, z: target.z, duration: 2, ease: "power2.out" });
+
+            } catch(e) { console.error("Data fetch failed", e); }
         }
 
-        function latLonToVector3(lat, lon, radius) {
-            const phi = (90 - lat) * (Math.PI / 180);
-            const theta = (lon + 180) * (Math.PI / 180);
-            return new THREE.Vector3(-radius * Math.sin(phi) * Math.cos(theta), radius * Math.cos(phi), radius * Math.sin(phi) * Math.sin(theta));
+        function updateUI(city, country, w, aq) {
+            const aqi = Math.round(aq.us_aqi);
+            const temp = Math.round(w.temperature);
+            
+            document.getElementById('display-city').innerText = city;
+            document.getElementById('display-country').innerText = country;
+            document.getElementById('stat-temp').innerText = temp;
+            document.getElementById('stat-aqi').innerText = aqi;
+            
+            let moodClass = "mood-neutral", weatherIcon = WEATHER_SVGS.sun, desc = "Clear", statusText = "Moderate Air", introText = "Hawa ki quality theek hai, lekin sensitive logo ko dhyan dena chahiye.";
+            
+            if(aqi > 150) {
+                moodClass = "mood-critical"; weatherIcon = WEATHER_SVGS.haze; desc = "Hazardous"; statusText = "Toxic Levels";
+                introText = "Hawa bahut zeherili hai. Bahar jane se bachein aur mask ka upyog karein.";
+            } else if(aqi > 100) {
+                moodClass = "mood-sad"; weatherIcon = WEATHER_SVGS.cloud; desc = "Smoggy"; statusText = "Unhealthy";
+                introText = "Pollution kafi zyada hai. Baccho aur buzurgon ke liye hawa khatarnak ho sakti hai.";
+            } else if(aqi < 50) {
+                moodClass = "mood-happy"; weatherIcon = WEATHER_SVGS.sun; desc = "Fresh"; statusText = "Pure Air";
+                introText = "Hawa bilkul saaf aur taaza hai. Outdoor activities ke liye perfect time hai!";
+            }
+
+            document.body.className = moodClass;
+            document.getElementById('weather-icon-svg').innerHTML = weatherIcon;
+            document.getElementById('display-desc').innerText = desc;
+            document.getElementById('aqi-status').innerText = statusText;
+            document.getElementById('aqi-intro').innerText = introText;
+            document.getElementById('weather-label').innerText = `${desc} • ${temp}°C • AQI ${aqi}`;
+
+            window.currentGlobalAqi = aqi;
         }
 
-        function createLocationMarker(lat, lon) {
-            while(markerGroup.children.length > 0) markerGroup.remove(markerGroup.children[0]);
-            const pos = latLonToVector3(lat, lon, 1.01);
-            const ring = new THREE.Mesh(new THREE.RingGeometry(0.02, 0.035, 32), new THREE.MeshBasicMaterial({ color: 0x00d1ff, side: THREE.DoubleSide }));
-            ring.position.copy(pos); ring.lookAt(0,0,0);
-            markerGroup.add(ring);
-            const pulse = new THREE.Mesh(new THREE.RingGeometry(0.02, 0.03, 32), new THREE.MeshBasicMaterial({ color: 0x00d1ff, transparent: true, opacity: 0.6 }));
-            pulse.position.copy(pos); pulse.lookAt(0,0,0);
-            markerGroup.add(pulse);
-            gsap.to(pulse.scale, { x: 6, y: 6, duration: 2, repeat: -1 });
-            gsap.to(pulse.material, { opacity: 0, duration: 2, repeat: -1 });
+        // Search Logic
+        inputEl.addEventListener('input', async (e) => {
+            const val = e.target.value.trim();
+            if(val.length < 2) { suggestBox.style.display = 'none'; return; }
+            const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${val}&count=5`);
+            const data = await res.json();
+            if(data.results) {
+                suggestBox.innerHTML = '';
+                data.results.forEach(loc => {
+                    const d = document.createElement('div');
+                    d.className = 'suggestion-item text-xs uppercase font-bold tracking-widest';
+                    d.innerText = `${loc.name}, ${loc.country}`;
+                    d.onclick = () => {
+                        inputEl.value = loc.name;
+                        suggestBox.style.display = 'none';
+                        fetchData(loc.name, loc.country, loc.latitude, loc.longitude);
+                    };
+                    suggestBox.appendChild(d);
+                });
+                suggestBox.style.display = 'block';
+            }
+        });
+
+        // Event Handlers
+        document.getElementById('open-menu').onclick = () => document.getElementById('side-menu').classList.add('active');
+        document.getElementById('close-menu').onclick = () => document.getElementById('side-menu').classList.remove('active');
+        document.getElementById('search-btn').onclick = () => fetchData(inputEl.value);
+
+        document.getElementById('check-mood-btn').onclick = () => {
+            const val = window.currentGlobalAqi || 70;
+            const container = document.getElementById('mood-svg-container');
+            const emojiStatus = document.getElementById('emoji-status');
+            const emojiDesc = document.getElementById('emoji-desc');
+            const impactLabel = document.getElementById('mood-impact-label');
+            
+            if(val > 150) { 
+                container.innerHTML = SVG_FACES.critical; 
+                emojiStatus.innerText = "Earth is Choking"; 
+                emojiDesc.innerText = "Pollution level bahut zyada hai. Earth ko saans lene mein takleef ho rahi hai.";
+                impactLabel.innerText = "CRITICAL";
+                impactLabel.className = "text-sm font-black italic text-red-500";
+            }
+            else if(val > 100) { 
+                container.innerHTML = SVG_FACES.sad; 
+                emojiStatus.innerText = "Earth is Unwell"; 
+                emojiDesc.innerText = "Hawa mein dhuan aur zeher hai. Earth beemar mehsoos kar rahi hai.";
+                impactLabel.innerText = "SEVERE";
+                impactLabel.className = "text-sm font-black italic text-orange-500";
+            }
+            else if(val < 50) { 
+                container.innerHTML = SVG_FACES.happy; 
+                emojiStatus.innerText = "Earth is Happy"; 
+                emojiDesc.innerText = "Pure air and clear sky! Aaj Earth bahut khush aur fresh mehsoos kar rahi hai.";
+                impactLabel.innerText = "OPTIMAL";
+                impactLabel.className = "text-sm font-black italic text-green-500";
+            }
+            else { 
+                container.innerHTML = SVG_FACES.neutral; 
+                emojiStatus.innerText = "Earth is Neutral"; 
+                emojiDesc.innerText = "Sab kuch normal hai, par hum pollution aur kam kar sakte hain.";
+                impactLabel.innerText = "MODERATE";
+                impactLabel.className = "text-sm font-black italic text-blue-400";
+            }
+
+            document.getElementById('mood-overlay').style.display = 'flex';
+            document.getElementById('side-menu').classList.remove('active');
+        };
+
+        document.getElementById('close-mood').onclick = () => document.getElementById('mood-overlay').style.display = 'none';
+
+        function resetView() { 
+            gsap.to(camera.position, {x:0, y:0, z:4, duration: 1.5, ease: "power2.inOut"}); 
+            document.getElementById('side-menu').classList.remove('active'); 
         }
-
-        function updateUI(weather, aq, name, country) {
-            const aqiVal = Math.round(aq.us_aqi || 25);
-            document.getElementById('target-city').innerText = name;
-            document.getElementById('target-country').innerText = country;
-            document.getElementById('stat-temp').innerText = Math.round(weather.temperature);
-            document.getElementById('stat-aqi').innerText = aqiVal;
-            document.getElementById('stat-noise').innerText = Math.round(40 + (aqiVal/10) + (weather.windspeed*0.5));
-            document.getElementById('bar-noise').style.width = `${Math.min(aqiVal, 100)}%`;
-
-            let mood = "happy";
-            if (aqiVal > 150) mood = "critical";
-            else if (aqiVal > 100) mood = "sad";
-            else if (aqiVal > 50) mood = "neutral";
-
-            document.body.className = `mood-${mood} weather-sunny`;
+        
+        function toggleAtmosphere() { 
+            clouds.visible = !clouds.visible; 
         }
 
         function animate() {
             requestAnimationFrame(animate);
-            if (controls) controls.update();
-            if (clouds) clouds.rotation.y += 0.00015;
+            controls.update();
+            if(clouds) clouds.rotation.y += 0.0001;
             renderer.render(scene, camera);
         }
 
         setInterval(() => {
-            document.getElementById('local-time').innerText = new Date().toLocaleTimeString('en-GB', { hour12: false });
+            document.getElementById('clock').innerText = new Date().toLocaleTimeString('en-GB', { hour12: false });
         }, 1000);
 
-        window.addEventListener('resize', () => {
+        window.onload = initThree;
+        
+        // Dynamic Resize
+        window.onresize = () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        window.onload = initThree;
+        };
     </script>
 </body>
 </html>
