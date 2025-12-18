@@ -174,16 +174,16 @@
         let scene, camera, renderer, globe, clouds, controls, marker, atmosphere;
 
         const topPollutedCities = [
-            { name: "Lahore", country: "Pakistan", lat: 31.52, lon: 74.35, typicalAqi: 380, info: "High industrial emissions and seasonal crop burning." },
-            { name: "Delhi", country: "India", lat: 28.61, lon: 77.20, typicalAqi: 350, info: "Dense traffic and construction dust impact air quality." },
-            { name: "Dhaka", country: "Bangladesh", lat: 23.81, lon: 90.41, typicalAqi: 290, info: "Brick kiln smoke and vehicle exhaust are primary factors." },
-            { name: "Baghdad", country: "Iraq", lat: 33.31, lon: 44.36, typicalAqi: 240, info: "Dust storms and energy production emissions." },
-            { name: "Cairo", country: "Egypt", lat: 30.04, lon: 31.23, typicalAqi: 210, info: "Geographical basin trapping urban smog." },
-            { name: "Mumbai", country: "India", lat: 19.07, lon: 72.87, typicalAqi: 180, info: "Urban development and transportation density." },
-            { name: "Beijing", country: "China", lat: 39.90, lon: 116.40, typicalAqi: 160, info: "Rapid industrialization and winter heating reliance." },
-            { name: "Jakarta", country: "Indonesia", lat: -6.20, lon: 106.84, typicalAqi: 155, info: "Coal-fired power plants and massive traffic congestion." },
-            { name: "Mexico City", country: "Mexico", lat: 19.43, lon: -99.13, typicalAqi: 150, info: "Valley location traps pollutants from vehicles." },
-            { name: "Bangkok", country: "Thailand", lat: 13.75, lon: 100.50, typicalAqi: 145, info: "High levels of PM2.5 from traffic and industry." }
+            { name: "Lahore", country: "Pakistan", lat: 31.52, lon: 74.35, typicalAqi: 380, info: "Industrial emissions aur seasonal crop burning ki wajah se pollution zyada hai." },
+            { name: "Delhi", country: "India", lat: 28.61, lon: 77.20, typicalAqi: 350, info: "Bhadi traffic aur construction dust air quality ko kharab karte hain." },
+            { name: "Dhaka", country: "Bangladesh", lat: 23.81, lon: 90.41, typicalAqi: 290, info: "Eenton ke bhatte ka dhuwa aur gaadiyon ka exhaust mukhya kaaran hain." },
+            { name: "Baghdad", country: "Iraq", lat: 33.31, lon: 44.36, typicalAqi: 240, info: "Dhool bhari aandhi aur energy production ke emissions." },
+            { name: "Cairo", country: "Egypt", lat: 30.04, lon: 31.23, typicalAqi: 210, info: "Geographical location smog ko shehar mein hi rok leti hai." },
+            { name: "Mumbai", country: "India", lat: 19.07, lon: 72.87, typicalAqi: 180, info: "Urban development aur transport density pollution badha rahi hai." },
+            { name: "Beijing", country: "China", lat: 39.90, lon: 116.40, typicalAqi: 160, info: "Tez industrialization aur thand mein heating ka asar." },
+            { name: "Jakarta", country: "Indonesia", lat: -6.20, lon: 106.84, typicalAqi: 155, info: "Koyla power plants aur bhari traffic jam ka asar." },
+            { name: "Mexico City", country: "Mexico", lat: 19.43, lon: -99.13, typicalAqi: 150, info: "Valley location gaadiyon ke pollutants ko trap kar leti hai." },
+            { name: "Bangkok", country: "Thailand", lat: 13.75, lon: 100.50, typicalAqi: 145, info: "PM2.5 ke high levels traffic aur industry ki wajah se." }
         ];
 
         function init() {
@@ -294,20 +294,31 @@
                 if(val.length > 0) clearBtn.classList.remove('hidden');
                 else clearBtn.classList.add('hidden');
 
-                if(val.length < 3) { box.classList.add('hidden'); return; }
+                // Instant Suggestions: Triggered on 1st character
+                if(val.length < 1) { 
+                    box.classList.add('hidden'); 
+                    return; 
+                }
                 
-                const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${val}&count=5`);
-                const data = await res.json();
-                
-                if(data.results) {
-                    box.innerHTML = data.results.map(c => `
-                        <div class="p-4 cursor-pointer hover:bg-white/10 border-b border-white/5 transition-colors" 
-                             onclick="fetchData('${c.name}', '${c.country}', ${c.latitude}, ${c.longitude}); document.getElementById('suggestions-box').classList.add('hidden');">
-                            <div class="text-xs font-black uppercase tracking-wider">${c.name}</div>
-                            <div class="text-[9px] opacity-40 uppercase font-bold">${c.country}</div>
-                        </div>
-                    `).join('');
-                    box.classList.remove('hidden');
+                try {
+                    const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${val}&count=5`);
+                    const data = await res.json();
+                    
+                    if(data.results && data.results.length > 0) {
+                        box.innerHTML = data.results.map(c => `
+                            <div class="p-4 cursor-pointer hover:bg-white/10 border-b border-white/5 transition-colors" 
+                                 onclick="fetchData('${c.name}', '${c.country}', ${c.latitude}, ${c.longitude}); document.getElementById('suggestions-box').classList.add('hidden');">
+                                <div class="text-xs font-black uppercase tracking-wider">${c.name}</div>
+                                <div class="text-[9px] opacity-40 uppercase font-bold">${c.country}</div>
+                            </div>
+                        `).join('');
+                        box.classList.remove('hidden');
+                    } else {
+                        box.classList.add('hidden');
+                    }
+                } catch(error) {
+                    console.error("Geocoding failed", error);
+                    box.classList.add('hidden');
                 }
             });
 
@@ -439,10 +450,10 @@
 
             const humidStr = humidity > 70 ? "High humidity. " : (humidity < 30 ? "Dry air. " : "");
             
-            if (aqi <= 50) advisory = `${humidStr}Air quality is great! Fresh air for outdoor activities.`;
-            else if (aqi <= 100) advisory = `${humidStr}Air quality is acceptable. Sensitive individuals should be careful.`;
-            else if (aqi <= 150) advisory = `${humidStr}Sensitive groups may experience health effects. Limit stays outside.`;
-            else advisory = `${humidStr}Health alert: everyone may experience serious effects. Wear a mask.`;
+            if (aqi <= 50) advisory = `${humidStr}Hawa saaf hai! Bahar ghoomne ke liye perfect hai.`;
+            else if (aqi <= 100) advisory = `${humidStr}Hawa theek hai, lekin sensitive logon ko dhyan dena chahiye.`;
+            else if (aqi <= 150) advisory = `${humidStr}Sensitive logon ke liye bura asar ho sakta hai. Bahar kam niklein.`;
+            else advisory = `${humidStr}Health alert: mask pehn kar hi bahar niklein, hawa kaafi kharab hai.`;
 
             document.getElementById('stat-aqi').style.color = color;
             document.getElementById('stat-label').innerText = label;
