@@ -79,6 +79,12 @@
         /* Modal for AI */
         #ai-modal { z-index: 1000; opacity: 0; pointer-events: none; transition: all 0.3s ease; }
         #ai-modal.open { opacity: 1; pointer-events: auto; }
+
+        /* Collapsible Section */
+        #cities-collapse { max-height: 0; overflow: hidden; transition: max-height 0.4s ease-out; }
+        #cities-collapse.expanded { max-height: 1000px; }
+        .chevron { transition: transform 0.3s ease; }
+        .expanded .chevron { transform: rotate(180deg); }
     </style>
 </head>
 <body class="bg-black">
@@ -126,6 +132,7 @@
         </div>
         
         <div class="flex-1 overflow-y-auto p-5 space-y-6 custom-scroll">
+            <!-- Solar Toggle -->
             <div class="bg-white/5 rounded-2xl p-5 border border-white/10">
                 <div class="flex justify-between items-center mb-2">
                     <p class="text-[10px] font-black uppercase tracking-widest text-yellow-400">Solar Real-Time</p>
@@ -137,9 +144,19 @@
                 <p class="text-[9px] text-white/40 leading-relaxed">Prithvi par real-time suraj ki sthiti dikhayein.</p>
             </div>
 
-            <div class="space-y-4">
-                <p class="text-[10px] font-black uppercase tracking-widest text-red-500 pl-2">10 Sabse Pradushit Sheher</p>
-                <div id="polluted-city-list" class="space-y-2"></div>
+            <!-- Optional Collapsible Polluted Cities -->
+            <div class="space-y-2">
+                <button onclick="toggleCities()" class="interactive w-full flex justify-between items-center bg-white/5 hover:bg-white/10 p-4 rounded-xl border border-white/10 transition-all">
+                    <div class="text-left">
+                        <p class="text-[10px] font-black uppercase tracking-widest text-red-500">Pollution Hotspots</p>
+                        <p class="text-[8px] opacity-40 uppercase">Optional View</p>
+                    </div>
+                    <svg id="cities-chevron" class="w-4 h-4 text-white/40 chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                
+                <div id="cities-collapse" class="space-y-2 pl-1 pr-1">
+                    <div id="polluted-city-list" class="space-y-2 pt-2 pb-2"></div>
+                </div>
             </div>
         </div>
         
@@ -253,23 +270,22 @@
             { name: "Shenyang", lat: 41.80, lon: 123.43, country: "China", level: "High" }
         ];
 
+        function toggleCities() {
+            const collapse = document.getElementById('cities-collapse');
+            const chevron = document.getElementById('cities-chevron');
+            collapse.classList.toggle('expanded');
+            chevron.style.transform = collapse.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+
         // Format Gemini Markdown-like response to HTML
         function formatAIResponse(text) {
-            // Convert Bold
             let html = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            
-            // Convert Headings (lines starting with # or headings with bold)
             html = html.replace(/### (.*?)$/gm, '<h3>$1</h3>');
             html = html.replace(/^(\d+\. )?<strong>(.*?)<\/strong>:/gm, '<h3>$2</h3>');
-
-            // Convert Lists
             html = html.replace(/^\* (.*?)$/gm, '<li>$1</li>');
             html = html.replace(/^- (.*?)$/gm, '<li>$1</li>');
-            
-            // Wrap list items in <ul> if they exist
             html = html.replace(/(<li>.*<\/li>)/gms, '<ul>$1</ul>');
             
-            // Convert newlines to paragraphs (excluding inside lists and headings)
             const lines = html.split('\n');
             const processedLines = lines.map(line => {
                 if (line.trim() === '' || line.startsWith('<h') || line.startsWith('<ul') || line.startsWith('<li')) {
@@ -292,8 +308,8 @@
                 </div>
             `;
 
-            const systemPrompt = "Aap ek environmental expert AI hain. User ko unke sheher ke AQI, temperature, noise aur weather ke base par health tips aur environment precautions dein Hindi (Latin) script mein. Apne response ko headings (jaise: 'Swasthya Sujhaav', 'Savdhani') aur bullet points mein format karein taaki padhne mein asaan ho. Sirf text dein, koi markdown code block nahi.";
-            const userQuery = `City: ${currentCityData.name}, ${currentCityData.country}. AQI: ${currentCityData.aqi}, Temperature: ${currentCityData.temp}°C, Humidity: ${currentCityData.humidity}%, Noise Level: ${currentCityData.noise}dB, Weather: ${currentCityData.weather}. Health aur environment safety report taiyar karein.`;
+            const systemPrompt = "Aap ek environmental expert AI hain. User ko unke sheher ke AQI, temperature, noise aur weather ke base par health tips aur environment precautions dein Hindi (Latin) script mein. Apne response ko headings aur bullet points mein format karein.";
+            const userQuery = `City: ${currentCityData.name}, ${currentCityData.country}. AQI: ${currentCityData.aqi}, Temperature: ${currentCityData.temp}°C, Humidity: ${currentCityData.humidity}%, Noise Level: ${currentCityData.noise}dB, Weather: ${currentCityData.weather}. Report taiyar karein.`;
 
             let retries = 0;
             const maxRetries = 5;
@@ -321,16 +337,10 @@
                         const delay = Math.pow(2, retries) * 1000;
                         setTimeout(callGemini, delay);
                     } else {
-                        contentDiv.innerHTML = `
-                            <div class="bg-red-500/10 border border-red-500/20 p-6 rounded-2xl text-center">
-                                <p class="text-red-400 font-bold mb-2">Service Unavailable</p>
-                                <p class="text-xs text-red-400/60">AI engine busy hai. Kripya thodi der baad koshish karein.</p>
-                            </div>
-                        `;
+                        contentDiv.innerHTML = `<div class="p-6 text-center text-red-400">Engine busy hai, please retry later.</div>`;
                     }
                 }
             }
-
             callGemini();
         }
 
@@ -493,14 +503,14 @@
             const status = document.getElementById('aqi-status');
             const box = document.getElementById('advisory-box');
             const noiseVis = document.getElementById('noise-vis');
-            let color = "#10b981", label = "Safe", msg = "Paryavaran santulit hai. Samanya gatividhiyan jaari rakhein.";
+            let color = "#10b981", label = "Safe", msg = "Paryavaran santulit hai.";
 
             if(aqi > 200 || noise > 80) {
                 color = "#ef4444"; label = "Critical";
-                msg = noise > 80 ? "Bhari shor aur pradushan! Sehat ka dhyan rakhein." : "Severe pollution detected. Mask ka upyog karein.";
+                msg = "Severe condition! Sehat ka dhyan rakhein.";
             } else if(aqi > 70 || noise > 65) {
                 color = "#fbbf24"; label = "Caution";
-                msg = "Hawa aur shor ka star thoda zyada hai. Savdhani bartein.";
+                msg = "Hawa aur shor ka star thoda zyada hai.";
             }
 
             status.innerText = label;
