@@ -14,6 +14,16 @@
         :root { --blue-glow: rgba(59, 130, 246, 0.5); }
         body { margin: 0; overflow: hidden; font-family: 'Plus Jakarta Sans', sans-serif; background-color: #000; color: white; touch-action: manipulation; }
         
+        /* Interactive feedback */
+        .interactive { 
+            pointer-events: auto; 
+            transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+            cursor: pointer;
+        }
+        .interactive:active {
+            transform: scale(0.95);
+        }
+
         /* Modern Loading Overlay */
         #loading-overlay { 
             z-index: 9999; 
@@ -72,7 +82,6 @@
         .glass { background: rgba(5, 5, 12, 0.8); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; }
         #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .ui-layer { position: relative; z-index: 10; pointer-events: none; height: 100vh; display: flex; flex-direction: column; }
-        .interactive { pointer-events: auto; }
         
         #side-menu {
             transform: translateX(100%);
@@ -105,9 +114,8 @@
         .polluted-city-card {
             background: rgba(255, 255, 255, 0.03);
             border-left: 2px solid #ef4444;
-            transition: all 0.2s ease;
         }
-        .polluted-city-card:hover { transform: translateX(4px); background: rgba(239, 68, 68, 0.1); }
+        .polluted-city-card:hover { background: rgba(239, 68, 68, 0.1); }
         
         .risk-badge { padding: 4px 10px; border-radius: 50px; font-size: 9px; font-weight: 800; text-transform: uppercase; }
         
@@ -177,7 +185,7 @@
             </button>
         </div>
         
-        <div class="flex-1 overflow-y-auto p-5 space-y-6 interactive custom-scroll">
+        <div class="flex-1 overflow-y-auto p-5 space-y-6 custom-scroll">
             <!-- Lighting Section -->
             <div class="bg-white/5 rounded-2xl p-5 border border-white/10">
                 <div class="flex justify-between items-center mb-4">
@@ -185,7 +193,7 @@
                         <p class="text-[10px] font-black uppercase tracking-widest text-yellow-400">Solar Sync</p>
                         <p class="text-[9px] opacity-40 uppercase font-bold">UTC Time Lighting</p>
                     </div>
-                    <label class="toggle-switch">
+                    <label class="toggle-switch interactive">
                         <input type="checkbox" id="solar-toggle">
                         <span class="slider"></span>
                     </label>
@@ -222,7 +230,7 @@
     <main class="ui-layer p-4 md:p-10">
         <div class="flex flex-col md:flex-row justify-between items-start gap-4">
             <div class="flex w-full md:w-auto justify-between md:justify-start gap-3">
-                <div class="interactive glass p-4 md:p-5 flex items-center gap-4 border-l-4 border-blue-500">
+                <div class="glass p-4 md:p-5 flex items-center gap-4 border-l-4 border-blue-500">
                     <div class="w-2.5 h-2.5 bg-blue-500 rounded-full animate-pulse"></div>
                     <div>
                         <h1 class="text-[11px] md:text-xs font-black uppercase tracking-widest">Global Pulse</h1>
@@ -234,19 +242,19 @@
             </div>
 
             <div class="relative w-full md:w-[420px]">
-                <div class="interactive glass p-1.5 flex items-center pl-4 gap-2 border border-white/10">
-                    <input id="search-input" type="text" placeholder="Search City..." class="bg-transparent border-none outline-none text-sm w-full px-2 placeholder:text-white/20 font-medium">
-                    <button id="search-go" class="bg-blue-600 hover:bg-blue-500 text-white p-3 px-6 rounded-xl transition-all">
+                <div class="glass p-1.5 flex items-center pl-4 gap-2 border border-white/10 focus-within:border-blue-500 transition-colors">
+                    <input id="search-input" type="text" placeholder="Search City..." class="interactive bg-transparent border-none outline-none text-sm w-full px-2 placeholder:text-white/20 font-medium">
+                    <button id="search-go" class="interactive bg-blue-600 hover:bg-blue-500 text-white p-3 px-6 rounded-xl transition-all">
                         <span class="text-[10px] font-black uppercase tracking-widest">Search</span>
                     </button>
                 </div>
-                <div id="results-dropdown" class="interactive absolute top-full left-0 w-full mt-2 glass hidden overflow-hidden z-50"></div>
+                <div id="results-dropdown" class="absolute top-full left-0 w-full mt-2 glass hidden overflow-hidden z-50"></div>
             </div>
         </div>
 
         <!-- Data Dashboard -->
         <div class="mt-auto flex flex-col md:flex-row items-end justify-between gap-6">
-            <div id="data-card" class="interactive glass p-6 md:p-8 border-b-4 border-blue-500 transition-all duration-500 w-full md:max-w-[550px]">
+            <div id="data-card" class="glass p-6 md:p-8 border-b-4 border-blue-500 transition-all duration-500 w-full md:max-w-[550px]">
                 <div class="flex justify-between items-start mb-6">
                     <div>
                         <h2 id="city-name" class="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-none">Delhi</h2>
@@ -290,7 +298,7 @@
                 </div>
             </div>
 
-            <div class="hidden md:block interactive glass p-6 px-10 text-right">
+            <div class="hidden md:block glass p-6 px-10 text-right">
                 <p id="digital-clock" class="text-5xl font-black tracking-tighter">00:00:00</p>
                 <p id="utc-label" class="text-[8px] font-black opacity-20 tracking-[0.4em] uppercase mt-1">UTC Syncing...</p>
             </div>
@@ -320,7 +328,6 @@
             { name: "Shenyang", lat: 41.80, lon: 123.43, country: "China", level: "High" }
         ];
 
-        // Custom Loader Progress
         function updateLoader(percent) {
             const bar = document.getElementById('loader-bar');
             const txt = document.getElementById('loader-percent');
@@ -344,7 +351,6 @@
 
             const loader = new THREE.TextureLoader();
             
-            // Simulation of loading progress
             let progress = 0;
             const interval = setInterval(() => {
                 progress += Math.random() * 15;
@@ -354,9 +360,8 @@
                     finishLoading();
                 }
                 updateLoader(Math.floor(progress));
-            }, 150);
+            }, 100);
 
-            // Earth
             globe = new THREE.Mesh(
                 new THREE.SphereGeometry(100, 64, 64),
                 new THREE.MeshPhongMaterial({
@@ -369,7 +374,6 @@
             );
             scene.add(globe);
 
-            // Clouds
             clouds = new THREE.Mesh(
                 new THREE.SphereGeometry(101.5, 64, 64),
                 new THREE.MeshPhongMaterial({
@@ -379,7 +383,6 @@
             );
             scene.add(clouds);
 
-            // Lights
             ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
             scene.add(ambientLight);
 
@@ -387,7 +390,6 @@
             sunLight.position.set(500, 300, 400); 
             scene.add(sunLight);
 
-            // Markers
             marker = new THREE.Mesh(new THREE.CircleGeometry(2, 32), new THREE.MeshBasicMaterial({ color: 0x3b82f6, side: THREE.DoubleSide }));
             marker.visible = false;
             scene.add(marker);
@@ -405,9 +407,7 @@
         function finishLoading() {
             const overlay = document.getElementById('loading-overlay');
             overlay.style.opacity = '0';
-            setTimeout(() => {
-                overlay.style.display = 'none';
-            }, 800);
+            setTimeout(() => { overlay.style.display = 'none'; }, 800);
         }
 
         function updateSolarPosition() {
@@ -430,10 +430,32 @@
         function setupUI() {
             const input = document.getElementById('search-input');
             const dropdown = document.getElementById('results-dropdown');
+            const searchBtn = document.getElementById('search-go');
             const toggle = document.getElementById('solar-toggle');
             const toggleCitiesBtn = document.getElementById('toggle-city-list');
             const cityContainer = document.getElementById('city-list-container');
             const chevron = document.getElementById('chevron-icon');
+
+            const triggerSearch = async () => {
+                const val = input.value.trim();
+                if (val.length < 2) return;
+                const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${val}&count=1`);
+                const data = await res.json();
+                if (data.results && data.results[0]) {
+                    const i = data.results[0];
+                    fetchData(i.name, i.country, i.latitude, i.longitude);
+                    dropdown.classList.add('hidden');
+                }
+            };
+
+            // Enter key search
+            input.onkeydown = (e) => {
+                if (e.key === "Enter") {
+                    triggerSearch();
+                }
+            };
+
+            searchBtn.onclick = triggerSearch;
 
             toggleCitiesBtn.onclick = () => {
                 cityContainer.classList.toggle('show');
@@ -455,7 +477,7 @@
                 const data = await res.json();
                 if(data.results) {
                     dropdown.innerHTML = data.results.map(i => `
-                        <div class="p-4 hover:bg-white/10 cursor-pointer border-b border-white/5" 
+                        <div class="interactive p-4 hover:bg-white/10 cursor-pointer border-b border-white/5" 
                              onclick="fetchData('${i.name}', '${i.country}', ${i.latitude}, ${i.longitude})">
                             <p class="text-xs font-black uppercase tracking-widest">${i.name}</p>
                             <p class="text-[8px] opacity-40 uppercase font-bold">${i.country}</p>
@@ -468,7 +490,7 @@
             const pollutedList = document.getElementById('polluted-city-list');
             pollutedCities.forEach(c => {
                 const div = document.createElement('div');
-                div.className = "polluted-city-card p-4 rounded-xl cursor-pointer border border-white/5";
+                div.className = "interactive polluted-city-card p-4 rounded-xl cursor-pointer border border-white/5";
                 div.innerHTML = `
                     <div class="flex justify-between items-center">
                         <div>
