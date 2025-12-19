@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Pulse - Realistic Earth AQI & Water Insights</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Global Pulse - Responsive Earth Analytics</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -11,15 +11,23 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
         
-        body { margin: 0; overflow: hidden; font-family: 'Plus Jakarta Sans', sans-serif; background-color: #000; color: white; }
-        .glass { background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; }
+        :root { --blue-glow: rgba(59, 130, 246, 0.5); }
+        body { margin: 0; overflow: hidden; font-family: 'Plus Jakarta Sans', sans-serif; background-color: #000; color: white; touch-action: manipulation; }
+        
+        .glass { background: rgba(5, 5, 12, 0.8); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; }
+        
         #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-        .ui-layer { position: relative; z-index: 10; pointer-events: none; }
+        
+        .ui-layer { position: relative; z-index: 10; pointer-events: none; height: 100vh; display: flex; flex-direction: column; }
         .interactive { pointer-events: auto; }
         
-        #loading-overlay { background: #000; z-index: 1000; }
-        
-        /* Sidebar Styles */
+        @media (max-width: 768px) {
+            .glass { border-radius: 16px; }
+            .mobile-hide { display: none; }
+            #data-card { padding: 1.5rem !important; }
+            #city-name { font-size: 2.5rem !important; }
+        }
+
         #side-menu {
             transform: translateX(100%);
             transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -27,324 +35,225 @@
         }
         #side-menu.open { transform: translateX(0); }
 
-        /* Accordion Styles */
-        .accordion-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease-out, padding 0.3s ease;
-        }
-        .accordion-item.active .accordion-content {
-            max-height: 500px;
-            padding-bottom: 1rem;
-        }
-        .accordion-item.active .chevron {
-            transform: rotate(180deg);
-        }
-        .chevron { transition: transform 0.3s ease; }
+        .water-bar { height: 6px; border-radius: 3px; background: rgba(255,255,255,0.05); overflow: hidden; }
+        .water-fill { height: 100%; background: #3b82f6; transition: width 1.5s ease-out; box-shadow: 0 0 10px var(--blue-glow); }
 
-        /* Custom Scrollbar */
+        .risk-badge { padding: 4px 10px; border-radius: 50px; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+
+        #loading-overlay { background: #000; z-index: 1000; }
+        
+        .polluted-city-card {
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 2px solid #ef4444;
+            transition: all 0.2s ease;
+        }
+        .polluted-city-card:hover {
+            background: rgba(239, 68, 68, 0.1);
+            transform: translateX(4px);
+        }
+
         .custom-scroll::-webkit-scrollbar { width: 4px; }
         .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
 
-        input::-webkit-search-cancel-button { display: none; }
-        
-        /* Water Bar Animation */
-        .water-fill {
-            transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease-out;
         }
+        .accordion-content.open {
+            max-height: 800px;
+        }
+        .rotate-icon { transition: transform 0.3s ease; }
+        .rotate-icon.open { transform: rotate(180deg); }
     </style>
 </head>
 <body class="bg-black">
 
-    <div id="loading-overlay" class="fixed inset-0 flex flex-col items-center justify-center gap-6 transition-opacity duration-1000">
-        <div class="w-12 h-12 border-2 border-t-blue-500 border-white/10 rounded-full animate-spin"></div>
-        <p class="text-[10px] uppercase font-bold tracking-[0.4em] text-blue-400">Syncing Global Hydrology...</p>
+    <div id="loading-overlay" class="fixed inset-0 flex flex-col items-center justify-center gap-4">
+        <div class="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+        <p class="text-[10px] uppercase font-bold tracking-[0.3em] text-blue-400">Syncing Earth Systems...</p>
     </div>
 
     <div id="canvas-container"></div>
 
     <!-- Side Menu -->
-    <div id="side-menu" class="fixed top-0 right-0 h-full w-full md:w-96 glass rounded-none border-l border-white/10 flex flex-col shadow-2xl overflow-hidden">
-        <div class="p-8 flex justify-between items-center border-b border-white/5">
+    <div id="side-menu" class="fixed top-0 right-0 h-full w-full sm:w-[380px] glass rounded-none border-l border-white/10 flex flex-col shadow-2xl overflow-hidden">
+        <div class="p-6 border-b border-white/5 flex justify-between items-center bg-white/5">
             <div>
                 <h2 class="text-xs font-black uppercase tracking-widest text-blue-400">Environment Hub</h2>
-                <p class="text-[9px] opacity-40 uppercase font-bold mt-1">Lakes & Air Quality Data</p>
+                <p class="text-[9px] opacity-40 uppercase font-bold">Planetary Telemetry</p>
             </div>
-            <button id="close-menu" class="interactive p-2 hover:bg-white/5 rounded-full transition-colors">
+            <button id="close-menu" class="interactive p-2 hover:bg-white/10 rounded-full transition-all">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
         
-        <div class="flex-1 overflow-y-auto custom-scroll p-4 space-y-3 interactive">
+        <div class="flex-1 overflow-y-auto p-5 space-y-4 interactive custom-scroll">
             
-            <!-- Water Level Section -->
-            <div class="accordion-item active bg-blue-500/5 rounded-2xl border border-blue-500/20 overflow-hidden">
-                <button class="w-full p-5 flex items-center justify-between text-left focus:outline-none">
-                    <div class="flex items-center gap-4">
-                        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.642.321a6 6 0 01-3.86.517l-2.388-.477a2 2 0 00-1.022.547l-1.168 1.168a2 2 0 00-.586 1.414v1.5a2 2 0 002 2h14a2 2 0 002-2v-1.5a2 2 0 00-.586-1.414l-1.168-1.168z"></path></svg>
-                        <div>
-                            <p class="text-[11px] font-black uppercase tracking-wider">Water Level Monitor</p>
-                            <p id="water-city-name" class="text-[8px] opacity-40 uppercase font-bold">Search City to Sync</p>
-                        </div>
+            <!-- Top Polluted Cities Accordion -->
+            <div class="border border-white/5 rounded-2xl overflow-hidden">
+                <button onclick="toggleAccordion()" class="w-full flex justify-between items-center p-5 bg-red-500/5 hover:bg-red-500/10 transition-colors">
+                    <div class="flex items-center gap-3">
+                        <svg class="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                        <span class="text-[10px] font-black uppercase tracking-widest text-red-500">Top 10 Polluted Cities</span>
                     </div>
-                    <svg class="w-4 h-4 chevron opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    <svg id="accordion-arrow" class="w-4 h-4 rotate-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                 </button>
-                <div class="accordion-content px-5">
-                    <div id="water-data-container" class="space-y-4 pb-4">
-                        <p class="text-[10px] text-white/40 italic py-4">Kripya koi shehar search karein lake data dekhne ke liye.</p>
+                <div id="polluted-accordion" class="accordion-content">
+                    <div id="polluted-city-list" class="p-4 space-y-2 border-t border-white/5 bg-black/40">
+                        <!-- City cards injected via JS -->
                     </div>
                 </div>
             </div>
 
-            <div class="p-2 pt-4">
-                <p class="text-[9px] font-black uppercase tracking-widest text-white/20 mb-3">Polluted Hotspots</p>
-            </div>
-            <div id="accordion-container" class="space-y-3"></div>
-        </div>
-
-        <div class="border-t border-white/5">
-            <div class="p-4">
-                <button onclick="resetRotation()" class="interactive w-full py-4 glass text-[10px] font-black uppercase tracking-widest hover:bg-blue-500/10 transition-all">
-                    View Reset Karein
-                </button>
-            </div>
-            <div class="bg-white/5 p-5 text-center">
-                <p class="text-[9px] font-bold uppercase tracking-[0.2em] opacity-40">
-                    ©2025 MONXCODE by MOHAN - MANISH
+            <!-- Hydrology Monitor -->
+            <div class="bg-blue-500/5 rounded-2xl p-5 border border-blue-500/10">
+                <p class="text-[10px] font-black uppercase tracking-widest text-blue-400 mb-4 flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Water Level Monitor
                 </p>
+                <div id="lake-container" class="space-y-5">
+                    <p class="text-[9px] opacity-40 italic">Select a city to sync water telemetry...</p>
+                </div>
             </div>
+
+        </div>
+        
+        <div class="p-5 border-t border-white/5 bg-white/5">
+            <button onclick="resetCamera()" class="interactive w-full py-4 glass text-[10px] font-black uppercase tracking-widest hover:bg-blue-500/20 transition-all">
+                Reset Globe Perspective
+            </button>
         </div>
     </div>
 
-    <main class="ui-layer min-h-screen flex flex-col justify-between p-6 md:p-12">
-        <header class="flex flex-col md:flex-row justify-between items-start gap-6">
-            <div class="flex items-start gap-4">
-                <div class="interactive glass p-5 px-8 flex items-center gap-5 border-l-4 border-blue-500" id="header-container">
-                    <div id="status-dot" class="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.8)]"></div>
+    <!-- UI -->
+    <main class="ui-layer p-4 md:p-10">
+        <div class="flex flex-col md:flex-row justify-between items-start gap-4">
+            <div class="flex w-full md:w-auto justify-between md:justify-start gap-3">
+                <div class="interactive glass p-4 md:p-5 flex items-center gap-4 border-l-4 border-blue-500">
+                    <div class="w-2.5 h-2.5 bg-blue-500 rounded-full animate-pulse"></div>
                     <div>
-                        <h1 class="text-xs font-black uppercase tracking-widest">Global Pulse</h1>
-                        <p class="text-[9px] opacity-40 uppercase font-bold">Earth & Water Engine</p>
+                        <h1 class="text-[11px] md:text-xs font-black uppercase tracking-widest">Global Pulse</h1>
+                        <p class="text-[8px] opacity-40 uppercase font-bold mobile-hide">Data Synchronization</p>
                     </div>
                 </div>
-                <button id="open-menu" class="interactive glass p-5 px-6 flex items-center gap-3 hover:bg-white/5 transition-all">
+                <button id="open-menu" class="interactive glass p-4 md:p-5 px-5 hover:bg-white/10 transition-all">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
-                    <span class="text-[10px] font-black uppercase tracking-widest hidden md:inline">Menu</span>
                 </button>
             </div>
 
-            <div class="relative w-full md:w-[450px]">
-                <div class="interactive glass p-1.5 flex items-center pl-4 gap-1">
-                    <input id="location-input" type="text" placeholder="Shehar search karein (e.g. Udaipur)..." class="bg-transparent border-none outline-none text-sm w-full px-2 placeholder:text-white/20">
-                    <button id="clear-search" class="hidden p-2 hover:bg-white/10 rounded-xl transition-all opacity-40 hover:opacity-100">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                    </button>
-                    <button id="search-btn" class="bg-blue-600 hover:bg-blue-500 text-white p-3.5 px-6 rounded-2xl transition-all flex items-center gap-2 group">
-                        <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                        <span class="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Search</span>
+            <div class="relative w-full md:w-[420px]">
+                <div class="interactive glass p-1.5 flex items-center pl-4 gap-2 border border-white/10">
+                    <input id="search-input" type="text" placeholder="Search City..." class="bg-transparent border-none outline-none text-sm w-full px-2 placeholder:text-white/20 font-medium">
+                    <button id="search-go" class="bg-blue-600 hover:bg-blue-500 text-white p-3 px-6 md:px-8 rounded-xl transition-all">
+                        <span class="text-[10px] font-black uppercase tracking-widest">Search</span>
                     </button>
                 </div>
-                <div id="suggestions-box" class="interactive absolute top-full left-0 w-full mt-3 glass hidden overflow-hidden shadow-2xl max-h-64 overflow-y-auto"></div>
+                <div id="results-dropdown" class="interactive absolute top-full left-0 w-full mt-2 glass hidden overflow-hidden z-50"></div>
             </div>
-        </header>
+        </div>
 
-        <div class="flex flex-col md:flex-row items-end justify-between gap-8">
-            <div class="w-full md:w-[460px]">
-                <div id="info-panel" class="interactive glass p-8 border-b-4 border-blue-500 transition-colors duration-500">
-                    <div class="flex justify-between items-start mb-8">
+        <div class="mt-auto flex flex-col md:flex-row items-end justify-between gap-6">
+            <div class="w-full md:max-w-[520px]">
+                <div id="data-card" class="interactive glass p-6 md:p-8 border-b-4 border-blue-500 transition-all duration-500">
+                    <div class="flex justify-between items-start mb-6">
                         <div>
-                            <h2 id="display-city" class="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-none">Earth</h2>
-                            <p id="display-country" class="text-[10px] uppercase opacity-40 font-bold tracking-[0.2em] mt-2">Orbital View</p>
+                            <h2 id="city-name" class="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-none truncate max-w-[200px] md:max-w-full">Delhi</h2>
+                            <p id="country-name" class="text-[9px] uppercase opacity-40 font-bold tracking-[0.2em] mt-2">India</p>
                         </div>
                         <div class="text-right">
-                            <p class="text-[8px] uppercase font-black opacity-30 mb-1">Live AQI</p>
-                            <p id="stat-aqi" class="text-5xl font-black leading-none transition-colors duration-500">--</p>
-                        </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-2 gap-3 mb-3">
-                         <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
-                            <p class="text-[8px] uppercase font-bold opacity-30 mb-1">Air Quality</p>
-                            <p id="stat-label" class="text-[10px] font-black uppercase tracking-tight text-blue-400">Loading...</p>
-                        </div>
-                        <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
-                            <p class="text-[8px] uppercase font-bold opacity-30 mb-1">Weather Status</p>
-                            <p id="stat-weather" class="text-[10px] font-black uppercase tracking-tight text-white">Loading...</p>
+                            <p class="text-[8px] uppercase font-black opacity-30 mb-1">AQI Index</p>
+                            <p id="aqi-val" class="text-5xl md:text-6xl font-black leading-none">--</p>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-3 mb-8">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                         <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
-                            <p class="text-[8px] uppercase font-bold opacity-30 mb-1">Temp</p>
-                            <p class="text-[10px] font-black uppercase tracking-wider"><span id="stat-temp">--</span>°C</p>
+                            <p class="text-[8px] uppercase font-black opacity-30 mb-1">Temp</p>
+                            <p class="text-xl font-black truncate"><span id="temp-val">--</span><span class="text-xs text-blue-400">°C</span></p>
                         </div>
                         <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
-                            <p class="text-[8px] uppercase font-bold opacity-30 mb-1">Humidity</p>
-                            <p class="text-[10px] font-black uppercase tracking-wider"><span id="stat-humid">--</span>%</p>
+                            <p class="text-[8px] uppercase font-black opacity-30 mb-1">Humidity</p>
+                            <p class="text-xl font-black truncate"><span id="humidity-val">--</span><span class="text-xs text-blue-400">%</span></p>
+                        </div>
+                        <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
+                            <p class="text-[8px] uppercase font-black opacity-30 mb-1">Wind</p>
+                            <p class="text-xl font-black truncate"><span id="wind-val">--</span><span class="text-[10px] text-blue-400 ml-0.5">km/h</span></p>
+                        </div>
+                        <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
+                            <p class="text-[8px] uppercase font-black opacity-30 mb-1">Status</p>
+                            <p id="weather-label" class="text-[9px] font-black uppercase tracking-tight text-blue-400 mt-1 truncate">Detecting...</p>
                         </div>
                     </div>
 
-                    <div class="p-5 rounded-2xl bg-white/5 border border-white/10 text-[11px] font-medium leading-relaxed text-white/70" id="advisory-text">
-                        Kripya kisi shehar ko search karein ya menu se koi hotspot chunein.
+                    <div class="p-5 rounded-2xl bg-blue-500/5 border border-blue-500/10">
+                        <div class="flex items-center justify-between mb-2">
+                            <p class="text-[9px] font-black uppercase tracking-widest text-white/30">Advisory</p>
+                            <div id="aqi-status" class="risk-badge bg-white/10">--</div>
+                        </div>
+                        <p id="advisory-box" class="text-[10px] md:text-[11px] font-semibold leading-relaxed text-white/70 italic">
+                            Analyzing atmospheric data for Delhi...
+                        </p>
                     </div>
                 </div>
             </div>
 
-            <div class="hidden md:block interactive glass p-6 px-10">
-                <p id="clock" class="text-5xl font-black tracking-tighter">00:00:00</p>
-                <p class="text-[9px] font-bold uppercase opacity-30 tracking-[0.3em] text-right mt-1">UTC Time Sync</p>
+            <div class="hidden md:block interactive glass p-6 px-10 border border-white/10 text-right">
+                <p id="digital-clock" class="text-5xl font-black tracking-tighter">00:00:00</p>
+                <p class="text-[8px] font-black opacity-20 tracking-[0.4em] uppercase mt-1">UTC Engine Sync</p>
             </div>
         </div>
     </main>
 
     <script>
-        let scene, camera, renderer, globe, clouds, controls, marker, sunLight;
+        let scene, camera, renderer, globe, clouds, controls, marker;
 
-        const topPollutedCities = [
-            { name: "Lahore", country: "Pakistan", lat: 31.52, lon: 74.35, typicalAqi: 380, info: "Industrial emissions aur seasonal crop burning ki wajah se pollution zyada hai." },
-            { name: "Delhi", country: "India", lat: 28.61, lon: 77.20, typicalAqi: 350, info: "Bhadi traffic aur construction dust air quality ko kharab karte hain." },
-            { name: "Dhaka", country: "Bangladesh", lat: 23.81, lon: 90.41, typicalAqi: 290, info: "Eenton ke bhatte ka dhuwa aur gaadiyon ka exhaust mukhya kaaran hain." }
+        const pollutedCities = [
+            { name: "Lahore", lat: 31.52, lon: 74.35, country: "Pakistan", level: "Hazardous" },
+            { name: "Delhi", lat: 28.61, lon: 77.20, country: "India", level: "Severe" },
+            { name: "Dhaka", lat: 23.81, lon: 90.41, country: "Bangladesh", level: "Very High" },
+            { name: "Kolkata", lat: 22.57, lon: 88.36, country: "India", level: "Very High" },
+            { name: "Karachi", lat: 24.86, lon: 67.00, country: "Pakistan", level: "High" },
+            { name: "Mumbai", lat: 19.07, lon: 72.87, country: "India", level: "Moderate-High" },
+            { name: "Beijing", lat: 39.90, lon: 116.40, country: "China", level: "High" },
+            { name: "Kathmandu", lat: 27.71, lon: 85.32, country: "Nepal", level: "High" },
+            { name: "Hanoi", lat: 21.02, lon: 105.83, country: "Vietnam", level: "High" },
+            { name: "Cairo", lat: 30.04, lon: 31.23, country: "Egypt", level: "High" }
         ];
 
-        // Weather Code mapping to human language
-        const weatherCodes = {
-            0: "Clear Sky / Saaf Aasman",
-            1: "Mainly Clear / Saaf",
-            2: "Partly Cloudy / Halke Badal",
-            3: "Overcast / Badal Chaye Hain",
-            45: "Foggy / Kohra",
-            48: "Depositing Rime Fog",
-            51: "Light Drizzle / Halki Boondabandi",
-            53: "Moderate Drizzle / Boondabandi",
-            55: "Dense Drizzle / Tej Boondabandi",
-            61: "Slight Rain / Halki Baarish",
-            63: "Moderate Rain / Baarish",
-            65: "Heavy Rain / Tej Baarish",
-            71: "Slight Snow Fall",
-            73: "Moderate Snow Fall",
-            75: "Heavy Snow Fall",
-            77: "Snow Grains",
-            80: "Slight Rain Showers",
-            81: "Moderate Rain Showers",
-            82: "Violent Rain Showers",
-            85: "Slight Snow Showers",
-            86: "Heavy Snow Showers",
-            95: "Thunderstorm / Bijli Kadakna",
-            96: "Thunderstorm with Slight Hail",
-            99: "Thunderstorm with Heavy Hail"
+        const weatherMap = {
+            0: "Clear Sky", 1: "Mainly Clear", 2: "Partly Cloudy", 3: "Overcast",
+            45: "Foggy", 48: "Rime Fog", 51: "Drizzle", 61: "Rainy",
+            71: "Slight Snow", 80: "Showers", 95: "Stormy"
         };
 
-        function getMockWaterLevel(cityName) {
-            const hash = cityName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-            const lakeCount = (hash % 3) + 1;
-            const lakes = [];
-            const suffixes = ["Lake", "Sagar", "Talab", "Reservoir"];
-            
-            for(let i=0; i<lakeCount; i++) {
-                const level = 30 + (hash * (i+1) % 70); 
-                const depth = 5 + (hash % 20);
-                let status = "Normal";
-                let isSafe = true;
-
-                if(level > 85) { status = "Danger (High)"; isSafe = false; }
-                else if(level < 40) { status = "Warning (Low)"; isSafe = false; }
-
-                lakes.push({
-                    name: `${cityName} ${suffixes[(hash + i) % suffixes.length]}`,
-                    level: level,
-                    depth: depth,
-                    isSafe: isSafe,
-                    status: status
-                });
-            }
-            return lakes;
-        }
-
-        function updateWaterLevelUI(cityName) {
-            const container = document.getElementById('water-data-container');
-            const cityDisplay = document.getElementById('water-city-name');
-            const lakes = getMockWaterLevel(cityName);
-            
-            cityDisplay.innerText = `${cityName} Hydrology Info`;
-            container.innerHTML = lakes.map(lake => `
-                <div class="bg-white/5 p-4 rounded-xl border border-white/5 space-y-3">
-                    <div class="flex justify-between items-center">
-                        <span class="text-[10px] font-black uppercase tracking-widest text-blue-300">${lake.name}</span>
-                        <span class="text-[8px] font-bold px-2 py-1 rounded ${lake.isSafe ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'} uppercase">
-                            ${lake.status}
-                        </span>
-                    </div>
-                    
-                    <div class="space-y-1">
-                        <div class="flex justify-between text-[8px] uppercase font-bold opacity-40">
-                            <span>Water Level</span>
-                            <span>${lake.level}%</span>
-                        </div>
-                        <div class="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-                            <div class="water-fill h-full bg-blue-500" style="width: 0%" data-width="${lake.level}%"></div>
-                        </div>
-                    </div>
-
-                    <div class="mt-2 p-2 bg-black/40 rounded-lg border border-white/5">
-                        <p class="text-[8px] font-bold text-blue-400 uppercase mb-1">Safety Instruction:</p>
-                        <p class="text-[9px] text-white/60 leading-tight">
-                            ${lake.isSafe ? 'Conditions normal hain. Kinare par ghumna surakshit hai.' : 'Paani ka star badh/ghat raha hai. Kripya gehre paani se bachein aur savdhani bartein.'}
-                        </p>
-                    </div>
-                </div>
-            `).join('');
-
-            setTimeout(() => {
-                container.querySelectorAll('.water-fill').forEach(el => {
-                    el.style.width = el.getAttribute('data-width');
-                });
-            }, 100);
-        }
-
-        function getSunPosition() {
-            const now = new Date();
-            const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
-            const lon = -15 * (utcHours - 12); 
-            const lat = 23.5 * Math.sin((2 * Math.PI * (now.getUTCDate() + 284)) / 365);
-            const phi = (90 - lat) * (Math.PI / 180);
-            const theta = (lon + 180) * (Math.PI / 180);
-            const r = 500;
-            return {
-                x: -(r * Math.sin(phi) * Math.cos(theta)),
-                y: r * Math.cos(phi),
-                z: r * Math.sin(phi) * Math.sin(theta)
-            };
-        }
-
-        function updateSun() {
-            const pos = getSunPosition();
-            sunLight.position.set(pos.x, pos.y, pos.z);
-        }
-
-        function init() {
+        function initScene() {
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
-            camera.position.z = 450;
+            
+            const isMobile = window.innerWidth < 768;
+            camera.position.z = isMobile ? 550 : 450;
 
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             document.getElementById('canvas-container').appendChild(renderer.domElement);
 
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.autoRotate = true;
-            controls.autoRotateSpeed = 0.2;
-            controls.enablePan = false;
+            controls.autoRotateSpeed = 0.4;
 
             const loader = new THREE.TextureLoader();
+            
             const globeGeo = new THREE.SphereGeometry(100, 64, 64);
             const globeMat = new THREE.MeshPhongMaterial({
                 map: loader.load('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg'),
                 bumpMap: loader.load('https://unpkg.com/three-globe/example/img/earth-topology.png'),
-                bumpScale: 2,
+                bumpScale: 1.2,
                 specularMap: loader.load('https://unpkg.com/three-globe/example/img/earth-waterbodies.png'),
-                specular: new THREE.Color('grey'),
-                shininess: 15
+                specular: new THREE.Color(0x333333),
+                shininess: 8
             });
             globe = new THREE.Mesh(globeGeo, globeMat);
             scene.add(globe);
@@ -352,226 +261,217 @@
             const cloudGeo = new THREE.SphereGeometry(101.5, 64, 64);
             const cloudMat = new THREE.MeshPhongMaterial({
                 map: loader.load('https://unpkg.com/three-globe/example/img/earth-clouds.png'),
-                transparent: true,
-                opacity: 0.4
+                transparent: true, opacity: 0.35
             });
             clouds = new THREE.Mesh(cloudGeo, cloudMat);
             scene.add(clouds);
 
-            const starsGeo = new THREE.BufferGeometry();
-            const starsPos = [];
-            for(let i=0; i<8000; i++) {
-                starsPos.push((Math.random()-0.5)*2000, (Math.random()-0.5)*2000, (Math.random()-0.5)*2000);
-            }
-            starsGeo.setAttribute('position', new THREE.Float32BufferAttribute(starsPos, 3));
-            scene.add(new THREE.Points(starsGeo, new THREE.PointsMaterial({color: 0x444444, size: 0.8})));
-
-            scene.add(new THREE.AmbientLight(0xffffff, 0.05));
-            sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
-            updateSun();
-            scene.add(sunLight);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+            const sun = new THREE.DirectionalLight(0xffffff, 1.3);
+            sun.position.set(500, 300, 400);
+            scene.add(sun);
 
             marker = new THREE.Mesh(
-                new THREE.RingGeometry(3, 5, 32),
-                new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.8, side: THREE.DoubleSide })
+                new THREE.RingGeometry(2.5, 4, 32),
+                new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.9, side: THREE.DoubleSide })
             );
             marker.visible = false;
             scene.add(marker);
 
+            setupLogic();
             animate();
-            setupMenu();
-            setupSearch();
             
+            // Default load: Delhi
             setTimeout(() => {
+                fetchData("Delhi", "India", 28.61, 77.20);
                 document.getElementById('loading-overlay').style.opacity = '0';
-                setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 1000);
-            }, 1500);
-
-            fetchData("Udaipur", "India", 24.5854, 73.7125);
+                setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 600);
+            }, 1200);
         }
 
-        function setupSearch() {
-            const input = document.getElementById('location-input');
-            const searchBtn = document.getElementById('search-btn');
-            const clearBtn = document.getElementById('clear-search');
+        function toggleAccordion() {
+            const content = document.getElementById('polluted-accordion');
+            const arrow = document.getElementById('accordion-arrow');
+            content.classList.toggle('open');
+            arrow.classList.toggle('open');
+        }
 
-            input.addEventListener('input', async (e) => {
+        function setupLogic() {
+            const input = document.getElementById('search-input');
+            const dropdown = document.getElementById('results-dropdown');
+            const searchBtn = document.getElementById('search-go');
+
+            input.oninput = async (e) => {
                 const val = e.target.value.trim();
-                const box = document.getElementById('suggestions-box');
-                if(val.length > 0) clearBtn.classList.remove('hidden');
-                else clearBtn.classList.add('hidden');
-                if(val.length < 2) { box.classList.add('hidden'); return; }
+                if(val.length < 3) { dropdown.classList.add('hidden'); return; }
                 
                 try {
                     const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${val}&count=5`);
                     const data = await res.json();
                     if(data.results) {
-                        box.innerHTML = data.results.map(c => `
-                            <div class="p-4 cursor-pointer hover:bg-white/10 border-b border-white/5 transition-colors" 
-                                 onclick="fetchData('${c.name}', '${c.country}', ${c.latitude}, ${c.longitude}); document.getElementById('suggestions-box').classList.add('hidden');">
-                                <div class="text-xs font-black uppercase tracking-wider">${c.name}</div>
-                                <div class="text-[9px] opacity-40 uppercase font-bold">${c.country}</div>
+                        dropdown.innerHTML = data.results.map(i => `
+                            <div class="p-4 hover:bg-white/10 cursor-pointer border-b border-white/5" 
+                                 onclick="fetchData('${i.name}', '${i.country}', ${i.latitude}, ${i.longitude})">
+                                <p class="text-xs font-black uppercase tracking-widest">${i.name}</p>
+                                <p class="text-[8px] opacity-40 uppercase font-bold">${i.country}</p>
                             </div>
                         `).join('');
-                        box.classList.remove('hidden');
+                        dropdown.classList.remove('hidden');
                     }
                 } catch(e) {}
-            });
+            };
 
-            searchBtn.addEventListener('click', () => {
-                const val = input.value.trim();
-                if(val) triggerSearch(val);
-            });
-        }
+            searchBtn.onclick = () => { if(input.value) fetchSimple(input.value); };
 
-        async function triggerSearch(val) {
-            const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${val}&count=1`);
-            const data = await res.json();
-            if(data.results && data.results[0]) {
-                const c = data.results[0];
-                fetchData(c.name, c.country, c.latitude, c.longitude);
-                document.getElementById('suggestions-box').classList.add('hidden');
-            }
-        }
-
-        function setupMenu() {
-            const container = document.getElementById('accordion-container');
-            topPollutedCities.forEach((city, index) => {
-                const item = document.createElement('div');
-                item.className = "accordion-item bg-white/5 rounded-2xl border border-white/5 overflow-hidden transition-all duration-300";
-                item.innerHTML = `
-                    <button class="w-full p-5 flex items-center justify-between text-left focus:outline-none">
-                        <div class="flex items-center gap-4">
-                            <span class="text-[9px] font-black text-white/30">0${index + 1}</span>
-                            <div>
-                                <p class="text-[11px] font-black uppercase tracking-wider">${city.name}</p>
-                                <p class="text-[8px] opacity-40 uppercase font-bold">${city.country}</p>
-                            </div>
+            const pollutedList = document.getElementById('polluted-city-list');
+            pollutedCities.forEach((c, idx) => {
+                const div = document.createElement('div');
+                div.className = "polluted-city-card p-4 rounded-xl cursor-pointer";
+                div.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-[9px] font-black uppercase tracking-widest text-white/90">#${idx+1} ${c.name}</p>
+                            <p class="text-[7px] opacity-40 uppercase font-bold">${c.country}</p>
                         </div>
-                        <svg class="w-4 h-4 chevron opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                    </button>
-                    <div class="accordion-content px-5">
-                        <p class="text-[10px] text-white/60 leading-relaxed mb-4">${city.info}</p>
-                        <button onclick="fetchData('${city.name}', '${city.country}', ${city.lat}, ${city.lon}); closeMenu();" 
-                                class="w-full py-3 bg-blue-500/20 text-blue-400 text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-blue-500/30 transition-all">
-                            Target Location
-                        </button>
+                        <span class="text-[7px] font-black text-red-500 uppercase bg-red-500/10 px-2 py-1 rounded-full">${c.level}</span>
                     </div>
                 `;
-                item.querySelector('button').onclick = () => {
-                    const isActive = item.classList.contains('active');
-                    document.querySelectorAll('.accordion-item').forEach(i => i.classList.remove('active'));
-                    if(!isActive) item.classList.add('active');
-                };
-                container.appendChild(item);
+                div.onclick = () => fetchData(c.name, c.country, c.lat, c.lon);
+                pollutedList.appendChild(div);
             });
 
             document.getElementById('open-menu').onclick = () => document.getElementById('side-menu').classList.add('open');
-            document.getElementById('close-menu').onclick = closeMenu;
-            
-            const waterItem = document.querySelector('.accordion-item');
-            waterItem.querySelector('button').onclick = () => {
-                waterItem.classList.toggle('active');
-            };
+            document.getElementById('close-menu').onclick = () => document.getElementById('side-menu').classList.remove('open');
         }
 
-        function closeMenu() { document.getElementById('side-menu').classList.remove('open'); }
+        async function fetchSimple(name) {
+            const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${name}&count=1`);
+            const data = await res.json();
+            if(data.results?.[0]) {
+                const c = data.results[0];
+                fetchData(c.name, c.country, c.latitude, c.longitude);
+            }
+        }
 
         async function fetchData(name, country, lat, lon) {
+            document.getElementById('results-dropdown').classList.add('hidden');
+            document.getElementById('side-menu').classList.remove('open');
+            
             try {
-                const [weatherRes, aqiRes] = await Promise.all([
-                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code&timezone=auto`),
+                const [wRes, aRes] = await Promise.all([
+                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=auto`),
                     fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi&timezone=auto`)
                 ]);
-                
-                const weatherData = await weatherRes.json();
-                const aqiData = await aqiRes.json();
-                const aqi = aqiData.current.us_aqi;
-                const wCode = weatherData.current.weather_code;
 
-                document.getElementById('display-city').innerText = name;
-                document.getElementById('display-country').innerText = country;
-                document.getElementById('stat-aqi').innerText = aqi;
-                document.getElementById('stat-temp').innerText = Math.round(weatherData.current.temperature_2m);
-                document.getElementById('stat-humid').innerText = Math.round(weatherData.current.relative_humidity_2m);
-                
-                // Weather status update
-                document.getElementById('stat-weather').innerText = weatherCodes[wCode] || "Unknown Condition";
+                const w = await wRes.json();
+                const a = await aRes.json();
+                const aqi = a.current.us_aqi;
 
-                updateTheme(aqi);
-                updateWaterLevelUI(name); 
-                focusPosition(lat, lon);
+                document.getElementById('city-name').innerText = name;
+                document.getElementById('country-name').innerText = country;
+                document.getElementById('aqi-val').innerText = aqi;
+                document.getElementById('temp-val').innerText = Math.round(w.current.temperature_2m);
+                document.getElementById('humidity-val').innerText = w.current.relative_humidity_2m;
+                document.getElementById('wind-val').innerText = Math.round(w.current.wind_speed_10m);
+                document.getElementById('weather-label').innerText = weatherMap[w.current.weather_code] || "Variable";
+
+                processSafety(aqi, name);
+                moveCamera(lat, lon);
             } catch(e) {}
         }
 
-        function focusPosition(lat, lon) {
-            const r = 103;
+        function processSafety(aqi, cityName) {
+            const status = document.getElementById('aqi-status');
+            const box = document.getElementById('advisory-box');
+            const card = document.getElementById('data-card');
+            const aqiText = document.getElementById('aqi-val');
+            
+            let color, label, msg;
+
+            if(aqi <= 50) {
+                color = "#10b981"; label = "Good / Saaf"; 
+                msg = "Air quality is fresh. Perfect for outdoor travel and sports.";
+            } else if(aqi <= 100) {
+                color = "#fbbf24"; label = "Moderate"; 
+                msg = "Acceptable air. Sensitive groups should monitor for symptoms.";
+            } else if(aqi <= 200) {
+                color = "#f87171"; label = "Unhealthy"; 
+                msg = "Pollution high. Use masks and avoid long stay outdoors.";
+            } else {
+                color = "#a855f7"; label = "Hazardous"; 
+                msg = "Critical level! Avoid going out. Keep windows closed and use purifiers.";
+            }
+
+            status.innerText = label;
+            status.style.backgroundColor = `${color}20`;
+            status.style.color = color;
+            aqiText.style.color = color;
+            box.innerText = msg;
+            card.style.borderBottomColor = color;
+            marker.material.color.set(color);
+
+            const lakeCont = document.getElementById('lake-container');
+            const level = 20 + Math.floor(Math.random() * 70);
+            
+            lakeCont.innerHTML = `
+                <div class="space-y-2">
+                    <div class="flex justify-between text-[9px] font-black uppercase">
+                        <span class="opacity-50">${cityName} Supply Level</span>
+                        <span class="text-blue-400">${level}%</span>
+                    </div>
+                    <div class="water-bar"><div class="water-fill" style="width: ${level}%"></div></div>
+                </div>
+            `;
+        }
+
+        function moveCamera(lat, lon) {
             const phi = (90 - lat) * (Math.PI / 180);
             const theta = (lon + 180) * (Math.PI / 180);
+            const r = 101;
+            
             const x = -(r * Math.sin(phi) * Math.cos(theta));
             const y = r * Math.cos(phi);
             const z = r * Math.sin(phi) * Math.sin(theta);
+
             marker.position.set(x, y, z);
             marker.lookAt(0, 0, 0);
             marker.visible = true;
-            gsap.to(camera.position, { x: x * 3.2, y: y * 3.2, z: z * 3.2, duration: 2.5, ease: "power4.inOut" });
+
+            const isMobile = window.innerWidth < 768;
+            const dist = isMobile ? 4.5 : 3.5;
+
+            gsap.to(camera.position, {
+                x: x * dist, y: y * dist, z: z * dist,
+                duration: 2, ease: "power2.inOut"
+            });
             controls.autoRotate = false;
         }
 
-        function updateTheme(aqi) {
-            let color, label, advisory;
-            
-            if (aqi <= 50) {
-                color = '#10b981'; label = 'Good / Saaf';
-                advisory = 'Hawa saaf hai! Bahar ghumne aur workout karne ke liye bilkul sahi samay hai.';
-            } else if (aqi <= 100) {
-                color = '#facc15'; label = 'Moderate / Sadharan';
-                advisory = 'Hawa thodi pradushit hai. Sensitive logon ko bahar zyada samay nahi bitana chahiye.';
-            } else if (aqi <= 150) {
-                color = '#f97316'; label = 'Unhealthy SG';
-                advisory = 'Bache aur buzurg savdhani bartein. Lambi sair ya bhari exercise se bachein.';
-            } else if (aqi <= 200) {
-                color = '#ef4444'; label = 'Unhealthy / Ashuddh';
-                advisory = 'AQI khatarnak star par hai. Mask pehne bina bahar na niklein.';
-            } else {
-                color = '#9333ea'; label = 'Hazardous / Khatarnak';
-                advisory = 'Emergency condition! Ghar ke andar rahein aur air purifier ka upyog karein.';
-            }
-
-            document.getElementById('stat-aqi').style.color = color;
-            document.getElementById('status-dot').style.backgroundColor = color;
-            document.getElementById('info-panel').style.borderBottomColor = color;
-            document.getElementById('header-container').style.borderLeftColor = color;
-            document.getElementById('stat-label').innerText = label;
-            document.getElementById('stat-label').style.color = color;
-            document.getElementById('advisory-text').innerText = advisory;
-            marker.material.color.set(color);
-        }
-
-        function resetRotation() { 
-            controls.autoRotate = true; 
-            marker.visible = false; 
-            gsap.to(camera.position, { x: 0, y: 0, z: 450, duration: 2 });
-            closeMenu();
+        function resetCamera() {
+            controls.autoRotate = true;
+            marker.visible = false;
+            const isMobile = window.innerWidth < 768;
+            gsap.to(camera.position, { x: 0, y: 0, z: isMobile ? 550 : 450, duration: 2 });
         }
 
         function animate() {
             requestAnimationFrame(animate);
             controls.update();
-            if(clouds) clouds.rotation.y += 0.0003;
+            if(clouds) clouds.rotation.y += 0.00015;
             renderer.render(scene, camera);
         }
 
-        setInterval(() => { 
-            document.getElementById('clock').innerText = new Date().toLocaleTimeString('en-US', { hour12: false }); 
+        setInterval(() => {
+            document.getElementById('digital-clock').innerText = new Date().toLocaleTimeString('en-US', { hour12: false });
         }, 1000);
-        
-        window.onload = init;
-        window.addEventListener('resize', () => {
+
+        window.onresize = () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+        };
+
+        window.onload = initScene;
     </script>
 </body>
 </html>
