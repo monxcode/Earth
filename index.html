@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Global Pulse - Responsive Earth Analytics</title>
+    <title>Global Pulse - Solar & Polluted Cities</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -15,19 +15,10 @@
         body { margin: 0; overflow: hidden; font-family: 'Plus Jakarta Sans', sans-serif; background-color: #000; color: white; touch-action: manipulation; }
         
         .glass { background: rgba(5, 5, 12, 0.8); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; }
-        
         #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-        
         .ui-layer { position: relative; z-index: 10; pointer-events: none; height: 100vh; display: flex; flex-direction: column; }
         .interactive { pointer-events: auto; }
         
-        @media (max-width: 768px) {
-            .glass { border-radius: 16px; }
-            .mobile-hide { display: none; }
-            #data-card { padding: 1.5rem !important; }
-            #city-name { font-size: 2.5rem !important; }
-        }
-
         #side-menu {
             transform: translateX(100%);
             transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -35,41 +26,49 @@
         }
         #side-menu.open { transform: translateX(0); }
 
-        .water-bar { height: 6px; border-radius: 3px; background: rgba(255,255,255,0.05); overflow: hidden; }
-        .water-fill { height: 100%; background: #3b82f6; transition: width 1.5s ease-out; box-shadow: 0 0 10px var(--blue-glow); }
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
 
-        .risk-badge { padding: 4px 10px; border-radius: 50px; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255,255,255,0.1); transition: .4s; border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+            background-color: white; transition: .4s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #3b82f6; }
+        input:checked + .slider:before { transform: translateX(20px); }
 
-        #loading-overlay { background: #000; z-index: 1000; }
-        
         .polluted-city-card {
             background: rgba(255, 255, 255, 0.03);
             border-left: 2px solid #ef4444;
             transition: all 0.2s ease;
         }
-        .polluted-city-card:hover {
-            background: rgba(239, 68, 68, 0.1);
-            transform: translateX(4px);
-        }
-
-        .custom-scroll::-webkit-scrollbar { width: 4px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
-
-        .accordion-content {
+        .polluted-city-card:hover { transform: translateX(4px); background: rgba(239, 68, 68, 0.1); }
+        
+        .risk-badge { padding: 4px 10px; border-radius: 50px; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+        
+        #city-list-container {
             max-height: 0;
             overflow: hidden;
-            transition: max-height 0.4s ease-out;
+            transition: max-height 0.5s ease-out;
         }
-        .accordion-content.open {
-            max-height: 800px;
+        #city-list-container.show {
+            max-height: 1000px;
         }
-        .rotate-icon { transition: transform 0.3s ease; }
-        .rotate-icon.open { transform: rotate(180deg); }
     </style>
 </head>
 <body class="bg-black">
 
-    <div id="loading-overlay" class="fixed inset-0 flex flex-col items-center justify-center gap-4">
+    <div id="loading-overlay" class="fixed inset-0 flex flex-col items-center justify-center gap-4 bg-black">
         <div class="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
         <p class="text-[10px] uppercase font-bold tracking-[0.3em] text-blue-400">Syncing Earth Systems...</p>
     </div>
@@ -80,40 +79,45 @@
     <div id="side-menu" class="fixed top-0 right-0 h-full w-full sm:w-[380px] glass rounded-none border-l border-white/10 flex flex-col shadow-2xl overflow-hidden">
         <div class="p-6 border-b border-white/5 flex justify-between items-center bg-white/5">
             <div>
-                <h2 class="text-xs font-black uppercase tracking-widest text-blue-400">Environment Hub</h2>
-                <p class="text-[9px] opacity-40 uppercase font-bold">Planetary Telemetry</p>
+                <h2 class="text-xs font-black uppercase tracking-widest text-blue-400">Control Center</h2>
+                <p class="text-[9px] opacity-40 uppercase font-bold">Earth Simulation Settings</p>
             </div>
             <button id="close-menu" class="interactive p-2 hover:bg-white/10 rounded-full transition-all">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
         
-        <div class="flex-1 overflow-y-auto p-5 space-y-4 interactive custom-scroll">
+        <div class="flex-1 overflow-y-auto p-5 space-y-6 interactive custom-scroll">
             
-            <!-- Top Polluted Cities Accordion -->
-            <div class="border border-white/5 rounded-2xl overflow-hidden">
-                <button onclick="toggleAccordion()" class="w-full flex justify-between items-center p-5 bg-red-500/5 hover:bg-red-500/10 transition-colors">
-                    <div class="flex items-center gap-3">
-                        <svg class="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
-                        <span class="text-[10px] font-black uppercase tracking-widest text-red-500">Top 10 Polluted Cities</span>
+            <!-- Lighting Section -->
+            <div class="bg-white/5 rounded-2xl p-5 border border-white/10">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <p class="text-[10px] font-black uppercase tracking-widest text-yellow-400">Solar Sync</p>
+                        <p class="text-[9px] opacity-40 uppercase font-bold">UTC Time Lighting</p>
                     </div>
-                    <svg id="accordion-arrow" class="w-4 h-4 rotate-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                </button>
-                <div id="polluted-accordion" class="accordion-content">
-                    <div id="polluted-city-list" class="p-4 space-y-2 border-t border-white/5 bg-black/40">
-                        <!-- City cards injected via JS -->
-                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="solar-toggle">
+                        <span class="slider"></span>
+                    </label>
                 </div>
+                <p id="solar-desc" class="text-[10px] text-white/50 leading-relaxed italic">
+                    Currently using Static Studio Light. Enable to sync globe lighting with current UTC position of the sun.
+                </p>
             </div>
 
-            <!-- Hydrology Monitor -->
-            <div class="bg-blue-500/5 rounded-2xl p-5 border border-blue-500/10">
-                <p class="text-[10px] font-black uppercase tracking-widest text-blue-400 mb-4 flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    Water Level Monitor
-                </p>
-                <div id="lake-container" class="space-y-5">
-                    <p class="text-[9px] opacity-40 italic">Select a city to sync water telemetry...</p>
+            <!-- Top Polluted Cities Section -->
+            <div class="space-y-4">
+                <button id="toggle-city-list" class="interactive w-full py-4 glass border border-red-500/30 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-red-500/10 transition-all text-red-500">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z"/></svg>
+                    Top 10 Polluted Cities
+                    <svg id="chevron-icon" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                
+                <div id="city-list-container" class="space-y-2">
+                    <div id="polluted-city-list" class="grid grid-cols-1 gap-2">
+                        <!-- Dynamic list will be injected here -->
+                    </div>
                 </div>
             </div>
 
@@ -126,7 +130,7 @@
         </div>
     </div>
 
-    <!-- UI -->
+    <!-- UI Overlay -->
     <main class="ui-layer p-4 md:p-10">
         <div class="flex flex-col md:flex-row justify-between items-start gap-4">
             <div class="flex w-full md:w-auto justify-between md:justify-start gap-3">
@@ -134,7 +138,6 @@
                     <div class="w-2.5 h-2.5 bg-blue-500 rounded-full animate-pulse"></div>
                     <div>
                         <h1 class="text-[11px] md:text-xs font-black uppercase tracking-widest">Global Pulse</h1>
-                        <p class="text-[8px] opacity-40 uppercase font-bold mobile-hide">Data Synchronization</p>
                     </div>
                 </div>
                 <button id="open-menu" class="interactive glass p-4 md:p-5 px-5 hover:bg-white/10 transition-all">
@@ -145,7 +148,7 @@
             <div class="relative w-full md:w-[420px]">
                 <div class="interactive glass p-1.5 flex items-center pl-4 gap-2 border border-white/10">
                     <input id="search-input" type="text" placeholder="Search City..." class="bg-transparent border-none outline-none text-sm w-full px-2 placeholder:text-white/20 font-medium">
-                    <button id="search-go" class="bg-blue-600 hover:bg-blue-500 text-white p-3 px-6 md:px-8 rounded-xl transition-all">
+                    <button id="search-go" class="bg-blue-600 hover:bg-blue-500 text-white p-3 px-6 rounded-xl transition-all">
                         <span class="text-[10px] font-black uppercase tracking-widest">Search</span>
                     </button>
                 </div>
@@ -153,73 +156,62 @@
             </div>
         </div>
 
+        <!-- Data Dashboard -->
         <div class="mt-auto flex flex-col md:flex-row items-end justify-between gap-6">
-            <div class="w-full md:max-w-[520px]">
-                <div id="data-card" class="interactive glass p-6 md:p-8 border-b-4 border-blue-500 transition-all duration-500">
-                    <div class="flex justify-between items-start mb-6">
-                        <div>
-                            <h2 id="city-name" class="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-none truncate max-w-[200px] md:max-w-full">Delhi</h2>
-                            <p id="country-name" class="text-[9px] uppercase opacity-40 font-bold tracking-[0.2em] mt-2">India</p>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-[8px] uppercase font-black opacity-30 mb-1">AQI Index</p>
-                            <p id="aqi-val" class="text-5xl md:text-6xl font-black leading-none">--</p>
-                        </div>
+            <div id="data-card" class="interactive glass p-6 md:p-8 border-b-4 border-blue-500 transition-all duration-500 w-full md:max-w-[550px]">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h2 id="city-name" class="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-none">Delhi</h2>
+                        <p id="country-name" class="text-[9px] uppercase opacity-40 font-bold tracking-[0.2em] mt-2">India</p>
                     </div>
+                    <div class="text-right">
+                        <p class="text-[8px] uppercase font-black opacity-30 mb-1">AQI Index</p>
+                        <p id="aqi-val" class="text-5xl md:text-6xl font-black leading-none">--</p>
+                    </div>
+                </div>
 
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                        <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
-                            <p class="text-[8px] uppercase font-black opacity-30 mb-1">Temp</p>
-                            <p class="text-xl font-black truncate"><span id="temp-val">--</span><span class="text-xs text-blue-400">°C</span></p>
-                        </div>
-                        <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
-                            <p class="text-[8px] uppercase font-black opacity-30 mb-1">Humidity</p>
-                            <p class="text-xl font-black truncate"><span id="humidity-val">--</span><span class="text-xs text-blue-400">%</span></p>
-                        </div>
-                        <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
-                            <p class="text-[8px] uppercase font-black opacity-30 mb-1">Wind</p>
-                            <p class="text-xl font-black truncate"><span id="wind-val">--</span><span class="text-[10px] text-blue-400 ml-0.5">km/h</span></p>
-                        </div>
-                        <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
-                            <p class="text-[8px] uppercase font-black opacity-30 mb-1">Status</p>
-                            <p id="weather-label" class="text-[9px] font-black uppercase tracking-tight text-blue-400 mt-1 truncate">Detecting...</p>
-                        </div>
+                <!-- Metrics Grid -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                    <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
+                        <p class="text-[8px] uppercase font-black opacity-30 mb-1">Temp</p>
+                        <p class="text-xl font-black truncate"><span id="temp-val">--</span><span class="text-xs text-blue-400">°C</span></p>
                     </div>
-
-                    <div class="p-5 rounded-2xl bg-blue-500/5 border border-blue-500/10">
-                        <div class="flex items-center justify-between mb-2">
-                            <p class="text-[9px] font-black uppercase tracking-widest text-white/30">Advisory</p>
-                            <div id="aqi-status" class="risk-badge bg-white/10">--</div>
-                        </div>
-                        <p id="advisory-box" class="text-[10px] md:text-[11px] font-semibold leading-relaxed text-white/70 italic">
-                            Analyzing atmospheric data for Delhi...
-                        </p>
+                    <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
+                        <p class="text-[8px] uppercase font-black opacity-30 mb-1">Humidity</p>
+                        <p class="text-xl font-black truncate"><span id="humidity-val">--</span><span class="text-xs text-blue-400">%</span></p>
                     </div>
+                    <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
+                        <p class="text-[8px] uppercase font-black opacity-30 mb-1">Wind</p>
+                        <p class="text-xl font-black truncate"><span id="wind-val">--</span><span class="text-[10px] text-blue-400 ml-0.5">km/h</span></p>
+                    </div>
+                    <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
+                        <p class="text-[8px] uppercase font-black opacity-30 mb-1">Status</p>
+                        <p id="weather-label" class="text-[9px] font-black uppercase tracking-tight text-blue-400 mt-1 truncate">Detecting...</p>
+                    </div>
+                </div>
+                
+                <!-- Safety Advisory -->
+                <div class="p-5 rounded-2xl bg-blue-500/5 border border-blue-500/10">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-[9px] font-black uppercase tracking-widest text-white/30">Safety Advisory</p>
+                        <div id="aqi-status" class="risk-badge bg-white/10">--</div>
+                    </div>
+                    <p id="advisory-box" class="text-[10px] md:text-[11px] font-semibold leading-relaxed text-white/70 italic">
+                        Initializing telemetry...
+                    </p>
                 </div>
             </div>
 
-            <div class="hidden md:block interactive glass p-6 px-10 border border-white/10 text-right">
+            <div class="hidden md:block interactive glass p-6 px-10 text-right">
                 <p id="digital-clock" class="text-5xl font-black tracking-tighter">00:00:00</p>
-                <p class="text-[8px] font-black opacity-20 tracking-[0.4em] uppercase mt-1">UTC Engine Sync</p>
+                <p id="utc-label" class="text-[8px] font-black opacity-20 tracking-[0.4em] uppercase mt-1">UTC Syncing...</p>
             </div>
         </div>
     </main>
 
     <script>
-        let scene, camera, renderer, globe, clouds, controls, marker, pulseMarker;
-
-        const pollutedCities = [
-            { name: "Lahore", lat: 31.52, lon: 74.35, country: "Pakistan", level: "Hazardous" },
-            { name: "Delhi", lat: 28.61, lon: 77.20, country: "India", level: "Severe" },
-            { name: "Dhaka", lat: 23.81, lon: 90.41, country: "Bangladesh", level: "Very High" },
-            { name: "Kolkata", lat: 22.57, lon: 88.36, country: "India", level: "Very High" },
-            { name: "Karachi", lat: 24.86, lon: 67.00, country: "Pakistan", level: "High" },
-            { name: "Mumbai", lat: 19.07, lon: 72.87, country: "India", level: "Moderate-High" },
-            { name: "Beijing", lat: 39.90, lon: 116.40, country: "China", level: "High" },
-            { name: "Kathmandu", lat: 27.71, lon: 85.32, country: "Nepal", level: "High" },
-            { name: "Hanoi", lat: 21.02, lon: 105.83, country: "Vietnam", level: "High" },
-            { name: "Cairo", lat: 30.04, lon: 31.23, country: "Egypt", level: "High" }
-        ];
+        let scene, camera, renderer, globe, clouds, controls, marker, pulseMarker, sunLight, ambientLight;
+        let isSolarSync = false;
 
         const weatherMap = {
             0: "Clear Sky", 1: "Mainly Clear", 2: "Partly Cloudy", 3: "Overcast",
@@ -227,12 +219,23 @@
             71: "Slight Snow", 80: "Showers", 95: "Stormy"
         };
 
-        function initScene() {
+        const pollutedCities = [
+            { name: "Lahore", lat: 31.52, lon: 74.35, country: "Pakistan", level: "Hazardous" },
+            { name: "Delhi", lat: 28.61, lon: 77.20, country: "India", level: "Severe" },
+            { name: "Dhaka", lat: 23.81, lon: 90.41, country: "Bangladesh", level: "Very High" },
+            { name: "Karachi", lat: 24.86, lon: 67.00, country: "Pakistan", level: "High" },
+            { name: "Beijing", lat: 39.90, lon: 116.40, country: "China", level: "High" },
+            { name: "Mumbai", lat: 19.07, lon: 72.87, country: "India", level: "Moderate" },
+            { name: "Baghdad", lat: 33.31, lon: 44.36, country: "Iraq", level: "High" },
+            { name: "Cairo", lat: 30.04, lon: 31.23, country: "Egypt", level: "High" },
+            { name: "Kolkata", lat: 22.57, lon: 88.36, country: "India", level: "High" },
+            { name: "Shenyang", lat: 41.80, lon: 123.43, country: "China", level: "High" }
+        ];
+
+        function init() {
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
-            
-            const isMobile = window.innerWidth < 768;
-            camera.position.z = isMobile ? 550 : 450;
+            camera.position.z = window.innerWidth < 768 ? 550 : 450;
 
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -242,112 +245,125 @@
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.autoRotate = true;
-            controls.autoRotateSpeed = 0.4;
 
             const loader = new THREE.TextureLoader();
             
-            const globeGeo = new THREE.SphereGeometry(100, 64, 64);
-            const globeMat = new THREE.MeshPhongMaterial({
-                map: loader.load('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg'),
-                bumpMap: loader.load('https://unpkg.com/three-globe/example/img/earth-topology.png'),
-                bumpScale: 1.2,
-                specularMap: loader.load('https://unpkg.com/three-globe/example/img/earth-waterbodies.png'),
-                specular: new THREE.Color(0x333333),
-                shininess: 8
-            });
-            globe = new THREE.Mesh(globeGeo, globeMat);
+            // Earth
+            globe = new THREE.Mesh(
+                new THREE.SphereGeometry(100, 64, 64),
+                new THREE.MeshPhongMaterial({
+                    map: loader.load('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg'),
+                    bumpMap: loader.load('https://unpkg.com/three-globe/example/img/earth-topology.png'),
+                    bumpScale: 1.5,
+                    specular: new THREE.Color(0x333333),
+                    shininess: 5
+                })
+            );
             scene.add(globe);
 
-            const cloudGeo = new THREE.SphereGeometry(101.5, 64, 64);
-            const cloudMat = new THREE.MeshPhongMaterial({
-                map: loader.load('https://unpkg.com/three-globe/example/img/earth-clouds.png'),
-                transparent: true, opacity: 0.35
-            });
-            clouds = new THREE.Mesh(cloudGeo, cloudMat);
+            // Clouds
+            clouds = new THREE.Mesh(
+                new THREE.SphereGeometry(101.5, 64, 64),
+                new THREE.MeshPhongMaterial({
+                    map: loader.load('https://unpkg.com/three-globe/example/img/earth-clouds.png'),
+                    transparent: true, opacity: 0.4
+                })
+            );
             scene.add(clouds);
 
-            scene.add(new THREE.AmbientLight(0xffffff, 0.4));
-            const sun = new THREE.DirectionalLight(0xffffff, 1.3);
-            sun.position.set(500, 300, 400);
-            scene.add(sun);
+            // Lights
+            ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
 
-            // Core Static City Marker
-            marker = new THREE.Mesh(
-                new THREE.CircleGeometry(2.2, 32),
-                new THREE.MeshBasicMaterial({ color: 0x3b82f6, side: THREE.DoubleSide })
-            );
+            sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            sunLight.position.set(500, 300, 400); 
+            scene.add(sunLight);
+
+            // Markers
+            marker = new THREE.Mesh(new THREE.CircleGeometry(2, 32), new THREE.MeshBasicMaterial({ color: 0x3b82f6, side: THREE.DoubleSide }));
             marker.visible = false;
             scene.add(marker);
 
-            // Blinking Pulse Ring Marker
-            pulseMarker = new THREE.Mesh(
-                new THREE.RingGeometry(2.5, 5, 32),
-                new THREE.MeshBasicMaterial({ 
-                    color: 0x3b82f6, 
-                    transparent: true, 
-                    opacity: 0.7, 
-                    side: THREE.DoubleSide 
-                })
-            );
+            pulseMarker = new THREE.Mesh(new THREE.RingGeometry(2.5, 5, 32), new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.7, side: THREE.DoubleSide }));
             pulseMarker.visible = false;
             scene.add(pulseMarker);
 
-            setupLogic();
+            setupUI();
             animate();
             
-            // Default load: Delhi
             setTimeout(() => {
                 fetchData("Delhi", "India", 28.61, 77.20);
-                document.getElementById('loading-overlay').style.opacity = '0';
-                setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 600);
-            }, 1200);
+                document.getElementById('loading-overlay').style.display = 'none';
+            }, 1000);
         }
 
-        function toggleAccordion() {
-            const content = document.getElementById('polluted-accordion');
-            const arrow = document.getElementById('accordion-arrow');
-            content.classList.toggle('open');
-            arrow.classList.toggle('open');
+        function updateSolarPosition() {
+            if (!isSolarSync) {
+                sunLight.position.set(500, 300, 400); 
+                ambientLight.intensity = 0.5;
+                return;
+            }
+            const now = new Date();
+            const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60;
+            const sunLon = -((utcHours / 24) * 360 - 180); 
+            const sunLat = 23.5 * Math.sin((2 * Math.PI * (172)) / 365); 
+            const phi = (90 - sunLat) * (Math.PI / 180);
+            const theta = (sunLon + 180) * (Math.PI / 180);
+            const r = 500;
+            sunLight.position.set(-(r * Math.sin(phi) * Math.cos(theta)), r * Math.cos(phi), r * Math.sin(phi) * Math.sin(theta));
+            ambientLight.intensity = 0.2; 
         }
 
-        function setupLogic() {
+        function setupUI() {
             const input = document.getElementById('search-input');
             const dropdown = document.getElementById('results-dropdown');
-            const searchBtn = document.getElementById('search-go');
+            const toggle = document.getElementById('solar-toggle');
+            const toggleCitiesBtn = document.getElementById('toggle-city-list');
+            const cityContainer = document.getElementById('city-list-container');
+            const chevron = document.getElementById('chevron-icon');
+
+            // Top 10 Button Logic
+            toggleCitiesBtn.onclick = () => {
+                cityContainer.classList.toggle('show');
+                chevron.style.transform = cityContainer.classList.contains('show') ? 'rotate(180deg)' : 'rotate(0deg)';
+            };
+
+            toggle.onchange = (e) => {
+                isSolarSync = e.target.checked;
+                document.getElementById('solar-desc').innerText = isSolarSync ? 
+                    "Synced! Globe is now lit by real-time UTC solar position." : 
+                    "Currently using Static Studio Light. Enable to sync globe lighting with current UTC position of the sun.";
+                updateSolarPosition();
+            };
 
             input.oninput = async (e) => {
                 const val = e.target.value.trim();
                 if(val.length < 3) { dropdown.classList.add('hidden'); return; }
-                
-                try {
-                    const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${val}&count=5`);
-                    const data = await res.json();
-                    if(data.results) {
-                        dropdown.innerHTML = data.results.map(i => `
-                            <div class="p-4 hover:bg-white/10 cursor-pointer border-b border-white/5" 
-                                 onclick="fetchData('${i.name}', '${i.country}', ${i.latitude}, ${i.longitude})">
-                                <p class="text-xs font-black uppercase tracking-widest">${i.name}</p>
-                                <p class="text-[8px] opacity-40 uppercase font-bold">${i.country}</p>
-                            </div>
-                        `).join('');
-                        dropdown.classList.remove('hidden');
-                    }
-                } catch(e) {}
+                const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${val}&count=5`);
+                const data = await res.json();
+                if(data.results) {
+                    dropdown.innerHTML = data.results.map(i => `
+                        <div class="p-4 hover:bg-white/10 cursor-pointer border-b border-white/5" 
+                             onclick="fetchData('${i.name}', '${i.country}', ${i.latitude}, ${i.longitude})">
+                            <p class="text-xs font-black uppercase tracking-widest">${i.name}</p>
+                            <p class="text-[8px] opacity-40 uppercase font-bold">${i.country}</p>
+                        </div>
+                    `).join('');
+                    dropdown.classList.remove('hidden');
+                }
             };
 
-            searchBtn.onclick = () => { if(input.value) fetchSimple(input.value); };
-
             const pollutedList = document.getElementById('polluted-city-list');
-            pollutedCities.forEach((c, idx) => {
+            pollutedCities.forEach(c => {
                 const div = document.createElement('div');
-                div.className = "polluted-city-card p-4 rounded-xl cursor-pointer";
+                div.className = "polluted-city-card p-4 rounded-xl cursor-pointer border border-white/5";
                 div.innerHTML = `
                     <div class="flex justify-between items-center">
                         <div>
-                            <p class="text-[9px] font-black uppercase tracking-widest text-white/90">#${idx+1} ${c.name}</p>
+                            <p class="text-[9px] font-black uppercase tracking-widest">${c.name}</p>
                             <p class="text-[7px] opacity-40 uppercase font-bold">${c.country}</p>
                         </div>
-                        <span class="text-[7px] font-black text-red-500 uppercase bg-red-500/10 px-2 py-1 rounded-full">${c.level}</span>
+                        <span class="text-[7px] font-black px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 uppercase tracking-tighter">${c.level}</span>
                     </div>
                 `;
                 div.onclick = () => fetchData(c.name, c.country, c.lat, c.lon);
@@ -356,15 +372,6 @@
 
             document.getElementById('open-menu').onclick = () => document.getElementById('side-menu').classList.add('open');
             document.getElementById('close-menu').onclick = () => document.getElementById('side-menu').classList.remove('open');
-        }
-
-        async function fetchSimple(name) {
-            const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${name}&count=1`);
-            const data = await res.json();
-            if(data.results?.[0]) {
-                const c = data.results[0];
-                fetchData(c.name, c.country, c.latitude, c.longitude);
-            }
         }
 
         async function fetchData(name, country, lat, lon) {
@@ -389,12 +396,14 @@
                 document.getElementById('wind-val').innerText = Math.round(w.current.wind_speed_10m);
                 document.getElementById('weather-label').innerText = weatherMap[w.current.weather_code] || "Variable";
 
-                processSafety(aqi, name);
+                processSafety(aqi);
                 moveCamera(lat, lon);
-            } catch(e) {}
+            } catch(e) {
+                console.error("Telemetry error:", e);
+            }
         }
 
-        function processSafety(aqi, cityName) {
+        function processSafety(aqi) {
             const status = document.getElementById('aqi-status');
             const box = document.getElementById('advisory-box');
             const card = document.getElementById('data-card');
@@ -404,16 +413,16 @@
 
             if(aqi <= 50) {
                 color = "#10b981"; label = "Good / Saaf"; 
-                msg = "Air quality is fresh. Perfect for outdoor travel and sports.";
+                msg = "Hawa bilkul saaf hai. Bahar ghoomne aur khelne ke liye best time hai.";
             } else if(aqi <= 100) {
                 color = "#fbbf24"; label = "Moderate"; 
-                msg = "Acceptable air. Sensitive groups should monitor for symptoms.";
+                msg = "Hawa thodi pradushit hai. Sensitive logo ko dhyan rakhna chahiye.";
             } else if(aqi <= 200) {
                 color = "#f87171"; label = "Unhealthy"; 
-                msg = "Pollution high. Use masks and avoid long stay outdoors.";
+                msg = "Pollution zyada hai. Bahar nikalte waqt mask pehnein.";
             } else {
                 color = "#a855f7"; label = "Hazardous"; 
-                msg = "Critical level! Avoid going out. Keep windows closed and use purifiers.";
+                msg = "Khatarnak level! Bahar jane se bachein aur purifier use karein.";
             }
 
             status.innerText = label;
@@ -423,29 +432,14 @@
             box.innerText = msg;
             card.style.borderBottomColor = color;
             
-            // Sync highlight colors with AQI status
             marker.material.color.set(color);
             pulseMarker.material.color.set(color);
-
-            const lakeCont = document.getElementById('lake-container');
-            const level = 20 + Math.floor(Math.random() * 70);
-            
-            lakeCont.innerHTML = `
-                <div class="space-y-2">
-                    <div class="flex justify-between text-[9px] font-black uppercase">
-                        <span class="opacity-50">${cityName} Supply Level</span>
-                        <span class="text-blue-400">${level}%</span>
-                    </div>
-                    <div class="water-bar"><div class="water-fill" style="width: ${level}%"></div></div>
-                </div>
-            `;
         }
 
         function moveCamera(lat, lon) {
             const phi = (90 - lat) * (Math.PI / 180);
             const theta = (lon + 180) * (Math.PI / 180);
-            const r = 101.5; // Slightly above globe surface
-            
+            const r = 101.5;
             const x = -(r * Math.sin(phi) * Math.cos(theta));
             const y = r * Math.cos(phi);
             const z = r * Math.sin(phi) * Math.sin(theta);
@@ -453,56 +447,40 @@
             marker.position.set(x, y, z);
             marker.lookAt(0, 0, 0);
             marker.visible = true;
-
             pulseMarker.position.set(x, y, z);
             pulseMarker.lookAt(0, 0, 0);
             pulseMarker.visible = true;
 
-            const isMobile = window.innerWidth < 768;
-            const dist = isMobile ? 4.5 : 3.5;
-
-            gsap.to(camera.position, {
-                x: x * dist, y: y * dist, z: z * dist,
-                duration: 2, ease: "power2.inOut"
-            });
+            gsap.to(camera.position, { x: x * 3.5, y: y * 3.5, z: z * 3.5, duration: 2 });
             controls.autoRotate = false;
         }
 
         function resetCamera() {
             controls.autoRotate = true;
-            marker.visible = false;
-            pulseMarker.visible = false;
-            const isMobile = window.innerWidth < 768;
-            gsap.to(camera.position, { x: 0, y: 0, z: isMobile ? 550 : 450, duration: 2 });
+            marker.visible = false; pulseMarker.visible = false;
+            gsap.to(camera.position, { x: 0, y: 0, z: window.innerWidth < 768 ? 550 : 450, duration: 2 });
         }
 
         function animate() {
             requestAnimationFrame(animate);
             controls.update();
-            if(clouds) clouds.rotation.y += 0.00015;
-
-            // Blinking / Pulsing animation for the searched city
+            if(clouds) clouds.rotation.y += 0.0001;
             if(pulseMarker.visible) {
-                const time = performance.now() * 0.005;
-                const scale = 1 + (Math.sin(time) + 1) * 0.5; // Scale from 1 to 2
-                pulseMarker.scale.set(scale, scale, scale);
-                pulseMarker.material.opacity = 0.8 - ((Math.sin(time) + 1) * 0.4); // Fade out as it expands
+                const s = 1 + (Math.sin(Date.now() * 0.005) + 1) * 0.5;
+                pulseMarker.scale.set(s, s, s);
+                pulseMarker.material.opacity = 0.8 - (s-1);
             }
-
+            if(isSolarSync) updateSolarPosition();
             renderer.render(scene, camera);
         }
 
         setInterval(() => {
-            document.getElementById('digital-clock').innerText = new Date().toLocaleTimeString('en-US', { hour12: false });
+            const d = new Date();
+            document.getElementById('digital-clock').innerText = d.toLocaleTimeString('en-GB');
+            document.getElementById('utc-label').innerText = "UTC Engine Sync: " + d.toISOString().split('T')[1].split('.')[0];
         }, 1000);
 
-        window.onresize = () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        };
-
-        window.onload = initScene;
+        window.onload = init;
     </script>
 </body>
 </html>
