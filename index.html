@@ -34,7 +34,6 @@
 
         input[type=range] { accent-color: #3b82f6; cursor: pointer; width: 100%; height: 6px; border-radius: 5px; }
 
-        /* Breathing Ball Effect */
         .breathing-ball {
             width: 8px;
             height: 8px;
@@ -157,32 +156,26 @@
 
             <!-- Enhanced Data Grid -->
             <div class="grid grid-cols-3 gap-2 mb-5">
-                <!-- Temp -->
                 <div class="bg-white/5 p-3 rounded-2xl text-center">
                     <p class="text-[8px] uppercase text-white/30 font-bold mb-1">Temp</p>
                     <p class="text-lg font-black"><span id="val-temp">--</span>°</p>
                 </div>
-                <!-- Humidity -->
                 <div class="bg-white/5 p-3 rounded-2xl text-center">
                     <p class="text-[8px] uppercase text-white/30 font-bold mb-1">Humidity</p>
                     <p class="text-lg font-black"><span id="val-hum">--</span><span class="text-[8px] ml-0.5">%</span></p>
                 </div>
-                <!-- Wind -->
                 <div class="bg-white/5 p-3 rounded-2xl text-center">
                     <p class="text-[8px] uppercase text-white/30 font-bold mb-1">Wind</p>
                     <p class="text-lg font-black"><span id="val-wind">--</span><span class="text-[8px] ml-0.5">k</span></p>
                 </div>
-                <!-- Noise -->
                 <div class="bg-white/5 p-3 rounded-2xl text-center">
                     <p class="text-[8px] uppercase text-white/30 font-bold mb-1">Noise</p>
                     <p class="text-lg font-black"><span id="val-noise">--</span><span class="text-[8px] ml-0.5">db</span></p>
                 </div>
-                <!-- UV Index -->
                 <div class="bg-white/5 p-3 rounded-2xl text-center">
                     <p class="text-[8px] uppercase text-white/30 font-bold mb-1">UV Index</p>
                     <p class="text-lg font-black"><span id="val-uv">--</span></p>
                 </div>
-                <!-- Sky -->
                 <div class="bg-white/5 p-3 rounded-2xl text-center flex flex-col justify-center items-center">
                     <p class="text-[8px] uppercase text-white/30 font-bold mb-1">Sky</p>
                     <p id="val-sky" class="text-[9px] font-black uppercase text-blue-400 leading-tight truncate w-full">--</p>
@@ -267,21 +260,41 @@
         function createPulse(lat, lon, colorHex) {
             if (activePulse) scene.remove(activePulse);
             const pulseGroup = new THREE.Group();
-            const pin = new THREE.Mesh(new THREE.SphereGeometry(1.8, 16, 16), new THREE.MeshBasicMaterial({ color: colorHex }));
+            
+            // Sleek Core Point (Small, very bright)
+            const pinGeo = new THREE.SphereGeometry(1.2, 16, 16);
+            const pinMat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 1 });
+            const pin = new THREE.Mesh(pinGeo, pinMat);
             pulseGroup.add(pin);
-            const ring = new THREE.Mesh(new THREE.RingGeometry(2, 5, 32), new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.8, side: THREE.DoubleSide }));
+            
+            // Subtle Background Glow
+            const glowGeo = new THREE.CircleGeometry(4, 32);
+            const glowMat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.3, side: THREE.DoubleSide });
+            const glow = new THREE.Mesh(glowGeo, glowMat);
+            pulseGroup.add(glow);
+            
+            // Sleek Expanding Ring (Very thin)
+            const ringGeo = new THREE.RingGeometry(3, 3.5, 64);
+            const ringMat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.7, side: THREE.DoubleSide });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
             pulseGroup.add(ring);
 
             const phi = (90 - lat) * (Math.PI / 180);
             const theta = (lon + 180) * (Math.PI / 180);
-            const r = 121;
+            const r = 124; // High enough to clear everything
             pulseGroup.position.set(-(r * Math.sin(phi) * Math.cos(theta)), r * Math.cos(phi), r * Math.sin(phi) * Math.sin(theta));
             pulseGroup.lookAt(0,0,0);
             
             activePulse = pulseGroup;
             scene.add(activePulse);
-            gsap.to(ring.scale, { x: 4, y: 4, duration: 1.2, repeat: -1, ease: "power1.out" });
-            gsap.to(ring.material, { opacity: 0, duration: 1.2, repeat: -1, ease: "power1.out" });
+            
+            // High-intensity Sleek Animations
+            gsap.to(pin.scale, { x: 1.5, y: 1.5, z: 1.5, duration: 0.8, repeat: -1, yoyo: true, ease: "sine.inOut" });
+            gsap.to(glow.scale, { x: 1.2, y: 1.2, duration: 0.8, repeat: -1, yoyo: true, ease: "sine.inOut" });
+            
+            // The Sleek Ring Pulse
+            gsap.to(ring.scale, { x: 6, y: 6, duration: 1.4, repeat: -1, ease: "power2.out" });
+            gsap.to(ring.material, { opacity: 0, duration: 1.4, repeat: -1, ease: "power2.out" });
         }
 
         async function fetchData(name, country, lat, lon) {
@@ -296,27 +309,35 @@
                 document.getElementById('disp-city').innerText = name;
                 document.getElementById('disp-country').innerText = country;
                 
-                // Static Updates
                 document.getElementById('val-temp').innerText = Math.round(weatherData.current.temperature_2m);
                 document.getElementById('val-hum').innerText = Math.round(weatherData.current.relative_humidity_2m);
                 document.getElementById('val-wind').innerText = Math.round(weatherData.current.wind_speed_10m);
                 document.getElementById('val-uv').innerText = weatherData.current.uv_index || 0;
                 document.getElementById('val-sky').innerText = weatherCodes[weatherData.current.weather_code] || "Clear";
                 
-                // Simulated Noise based on wind + humidity for context
                 const simulatedNoise = 45 + Math.round(weatherData.current.wind_speed_10m / 2);
                 document.getElementById('val-noise').innerText = simulatedNoise;
 
                 const aqi = airData.current.us_aqi;
                 document.getElementById('disp-aqi').innerText = aqi;
 
-                let color = 0x10b981;
+                let color = 0x3b82f6; // Default Blue
                 const tag = document.getElementById('aqi-tag');
                 const advise = document.getElementById('val-advise');
 
-                if (aqi <= 50) { tag.innerText = "Good"; tag.style.color = "#10b981"; advise.innerText = "Air quality is great. Breathe deep!"; }
-                else if (aqi <= 100) { color = 0xf59e0b; tag.innerText = "Moderate"; tag.style.color = "#f59e0b"; advise.innerText = "Fair quality. Sensitive groups should be cautious."; }
-                else { color = 0xef4444; tag.innerText = "High Risk"; tag.style.color = "#ef4444"; advise.innerText = "Pollution alert: Limit outdoor exposure."; }
+                if (aqi <= 50) { 
+                    color = 0x10b981;
+                    tag.innerText = "Good"; tag.style.color = "#10b981"; 
+                    advise.innerText = "Air quality is great. Breathe deep!"; 
+                } else if (aqi <= 100) { 
+                    color = 0xf59e0b;
+                    tag.innerText = "Moderate"; tag.style.color = "#f59e0b"; 
+                    advise.innerText = "Fair quality. Sensitive groups should be cautious."; 
+                } else { 
+                    color = 0xef4444;
+                    tag.innerText = "High Risk"; tag.style.color = "#ef4444"; 
+                    advise.innerText = "Pollution alert: Limit outdoor exposure."; 
+                }
 
                 createPulse(lat, lon, color);
                 moveGlobeTo(lat, lon);
