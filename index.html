@@ -54,14 +54,13 @@
 
     <div id="loading-overlay" class="fixed inset-0 flex flex-col items-center justify-center gap-6 transition-opacity duration-1000">
         <div class="w-12 h-12 border-2 border-t-blue-500 border-white/10 rounded-full animate-spin"></div>
-        <p class="text-[10px] uppercase font-bold tracking-[0.4em] text-blue-400">Planet Taiyar Ho Raha Hai...</p>
+        <p class="text-[10px] uppercase font-bold tracking-[0.4em] text-blue-400">Real-Time Lighting Sync...</p>
     </div>
 
     <div id="canvas-container"></div>
 
     <!-- Side Menu -->
     <div id="side-menu" class="fixed top-0 right-0 h-full w-full md:w-96 glass rounded-none border-l border-white/10 flex flex-col shadow-2xl overflow-hidden">
-        <!-- Menu Header -->
         <div class="p-8 flex justify-between items-center border-b border-white/5">
             <div>
                 <h2 class="text-xs font-black uppercase tracking-widest text-blue-400">Atmosphere Hub</h2>
@@ -72,19 +71,14 @@
             </button>
         </div>
         
-        <!-- Accordion Container -->
-        <div id="accordion-container" class="flex-1 overflow-y-auto custom-scroll p-4 space-y-3 interactive">
-            <!-- Accordion items injected here -->
-        </div>
+        <div id="accordion-container" class="flex-1 overflow-y-auto custom-scroll p-4 space-y-3 interactive"></div>
 
-        <!-- Menu Footer/Actions -->
         <div class="border-t border-white/5">
             <div class="p-4">
                 <button onclick="resetRotation()" class="interactive w-full py-4 glass text-[10px] font-black uppercase tracking-widest hover:bg-blue-500/10 transition-all">
                     View Reset Karein
                 </button>
             </div>
-            <!-- Branded Footer -->
             <div class="bg-white/5 p-5 text-center">
                 <p class="text-[9px] font-bold uppercase tracking-[0.2em] opacity-40">
                     ©2025 MONXCODE by MOHAN - MANISH
@@ -101,7 +95,7 @@
                     <div id="status-dot" class="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.8)]"></div>
                     <div>
                         <h1 class="text-xs font-black uppercase tracking-widest">Global Pulse</h1>
-                        <p class="text-[9px] opacity-40 uppercase font-bold">Live Data Feed</p>
+                        <p class="text-[9px] opacity-40 uppercase font-bold">Real-Time Lighting</p>
                     </div>
                 </div>
                 <button id="open-menu" class="interactive glass p-5 px-6 flex items-center gap-3 hover:bg-white/5 transition-all">
@@ -158,7 +152,7 @@
                     </div>
 
                     <div class="p-5 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-[11px] font-medium leading-relaxed text-blue-200/80" id="advisory-text">
-                        Shehar search karein taaki wahan ki air quality aur mausam ki jankari mil sake.
+                        Search karein aur dekhein real-time mein kahan din hai aur kahan raat.
                     </div>
                 </div>
             </div>
@@ -171,7 +165,7 @@
     </main>
 
     <script>
-        let scene, camera, renderer, globe, clouds, controls, marker;
+        let scene, camera, renderer, globe, clouds, controls, marker, sunLight;
 
         const topPollutedCities = [
             { name: "Lahore", country: "Pakistan", lat: 31.52, lon: 74.35, typicalAqi: 380, info: "Industrial emissions aur seasonal crop burning ki wajah se pollution zyada hai." },
@@ -186,6 +180,32 @@
             { name: "Bangkok", country: "Thailand", lat: 13.75, lon: 100.50, typicalAqi: 145, info: "PM2.5 ke high levels traffic aur industry ki wajah se." }
         ];
 
+        function getSunPosition() {
+            // Calculate Sun position based on current UTC time
+            const now = new Date();
+            const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
+            
+            // Solar Longitude: Noon is at UTC 0 when Sun is over 0° Longitude approx.
+            // Sun moves 15 degrees per hour.
+            const lon = -15 * (utcHours - 12); 
+            const lat = 23.5 * Math.sin((2 * Math.PI * (now.getUTCDate() + 284)) / 365); // Approx Solar Declination
+
+            const phi = (90 - lat) * (Math.PI / 180);
+            const theta = (lon + 180) * (Math.PI / 180);
+
+            const r = 500;
+            return {
+                x: -(r * Math.sin(phi) * Math.cos(theta)),
+                y: r * Math.cos(phi),
+                z: r * Math.sin(phi) * Math.sin(theta)
+            };
+        }
+
+        function updateSun() {
+            const pos = getSunPosition();
+            sunLight.position.set(pos.x, pos.y, pos.z);
+        }
+
         function init() {
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
@@ -199,14 +219,13 @@
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.autoRotate = true;
-            controls.autoRotateSpeed = 0.5;
+            controls.autoRotateSpeed = 0.2;
             controls.enablePan = false;
             controls.minDistance = 200;
             controls.maxDistance = 800;
 
             const loader = new THREE.TextureLoader();
 
-            // Glow logic removed to provide cleaner look
             const globeGeo = new THREE.SphereGeometry(100, 64, 64);
             const globeMat = new THREE.MeshPhongMaterial({
                 map: loader.load('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg'),
@@ -236,10 +255,13 @@
             starsGeo.setAttribute('position', new THREE.Float32BufferAttribute(starsPos, 3));
             scene.add(new THREE.Points(starsGeo, new THREE.PointsMaterial({color: 0x444444, size: 0.8})));
 
-            scene.add(new THREE.AmbientLight(0xffffff, 0.4));
-            const mainLight = new THREE.DirectionalLight(0xffffff, 1.2);
-            mainLight.position.set(5, 3, 5);
-            scene.add(mainLight);
+            // Very low ambient light to simulate night side correctly
+            scene.add(new THREE.AmbientLight(0xffffff, 0.05));
+            
+            // Primary Sunlight
+            sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
+            updateSun();
+            scene.add(sunLight);
 
             marker = new THREE.Mesh(
                 new THREE.RingGeometry(3, 5, 32),
@@ -452,6 +474,10 @@
             requestAnimationFrame(animate);
             controls.update();
             if(clouds) clouds.rotation.y += 0.0003;
+            
+            // Periodically update Sun position (every few seconds)
+            if(Math.random() < 0.01) updateSun();
+            
             renderer.render(scene, camera);
         }
 
