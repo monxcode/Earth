@@ -308,6 +308,7 @@
     <script>
         let scene, camera, renderer, globe, clouds, controls, marker, pulseMarker, sunLight, ambientLight;
         let isSolarSync = false;
+        let globeGroup; // Group to hold globe and its children so they rotate together
 
         const weatherMap = {
             0: "Clear Sky", 1: "Mainly Clear", 2: "Partly Cloudy", 3: "Overcast",
@@ -348,6 +349,10 @@
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.5;
+
+            globeGroup = new THREE.Group();
+            scene.add(globeGroup);
 
             const loader = new THREE.TextureLoader();
             
@@ -372,7 +377,7 @@
                     shininess: 5
                 })
             );
-            scene.add(globe);
+            globeGroup.add(globe);
 
             clouds = new THREE.Mesh(
                 new THREE.SphereGeometry(101.5, 64, 64),
@@ -381,7 +386,7 @@
                     transparent: true, opacity: 0.4
                 })
             );
-            scene.add(clouds);
+            globeGroup.add(clouds);
 
             ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
             scene.add(ambientLight);
@@ -392,11 +397,11 @@
 
             marker = new THREE.Mesh(new THREE.CircleGeometry(2, 32), new THREE.MeshBasicMaterial({ color: 0x3b82f6, side: THREE.DoubleSide }));
             marker.visible = false;
-            scene.add(marker);
+            globeGroup.add(marker);
 
             pulseMarker = new THREE.Mesh(new THREE.RingGeometry(2.5, 5, 32), new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.7, side: THREE.DoubleSide }));
             pulseMarker.visible = false;
-            scene.add(pulseMarker);
+            globeGroup.add(pulseMarker);
 
             setupUI();
             animate();
@@ -448,7 +453,6 @@
                 }
             };
 
-            // Enter key search
             input.onkeydown = (e) => {
                 if (e.key === "Enter") {
                     triggerSearch();
@@ -585,8 +589,17 @@
             pulseMarker.lookAt(0, 0, 0);
             pulseMarker.visible = true;
 
-            gsap.to(camera.position, { x: x * 3.5, y: y * 3.5, z: z * 3.5, duration: 2 });
+            // Stop manual rotation momentarily to center the view, then resume
             controls.autoRotate = false;
+            gsap.to(camera.position, { 
+                x: x * 3.5, 
+                y: y * 3.5, 
+                z: z * 3.5, 
+                duration: 2,
+                onComplete: () => {
+                    controls.autoRotate = true; // Resume rotation even when a city is selected
+                }
+            });
         }
 
         function resetCamera() {
@@ -598,7 +611,15 @@
         function animate() {
             requestAnimationFrame(animate);
             controls.update();
+            
+            // Background slow group rotation to keep Earth moving
+            if (globeGroup) {
+                // If the user isn't interacting, we can add a tiny extra nudge or just rely on autoRotate
+                // but let's keep the clouds independent
+            }
+            
             if(clouds) clouds.rotation.y += 0.0001;
+            
             if(pulseMarker.visible) {
                 const s = 1 + (Math.sin(Date.now() * 0.005) + 1) * 0.5;
                 pulseMarker.scale.set(s, s, s);
