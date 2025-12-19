@@ -77,7 +77,7 @@
         
         <div class="flex-1 overflow-y-auto custom-scroll p-4 space-y-3 interactive">
             
-            <!-- Naya Water Level Section -->
+            <!-- Water Level Section -->
             <div class="accordion-item active bg-blue-500/5 rounded-2xl border border-blue-500/20 overflow-hidden">
                 <button class="w-full p-5 flex items-center justify-between text-left focus:outline-none">
                     <div class="flex items-center gap-4">
@@ -161,11 +161,18 @@
                         </div>
                     </div>
                     
-                    <div class="grid grid-cols-3 gap-3 mb-8">
-                        <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
-                            <p class="text-[8px] uppercase font-bold opacity-30 mb-1">Condition</p>
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                         <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
+                            <p class="text-[8px] uppercase font-bold opacity-30 mb-1">Air Quality</p>
                             <p id="stat-label" class="text-[10px] font-black uppercase tracking-tight text-blue-400">Loading...</p>
                         </div>
+                        <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
+                            <p class="text-[8px] uppercase font-bold opacity-30 mb-1">Weather Status</p>
+                            <p id="stat-weather" class="text-[10px] font-black uppercase tracking-tight text-white">Loading...</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 mb-8">
                         <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
                             <p class="text-[8px] uppercase font-bold opacity-30 mb-1">Temp</p>
                             <p class="text-[10px] font-black uppercase tracking-wider"><span id="stat-temp">--</span>°C</p>
@@ -197,6 +204,34 @@
             { name: "Delhi", country: "India", lat: 28.61, lon: 77.20, typicalAqi: 350, info: "Bhadi traffic aur construction dust air quality ko kharab karte hain." },
             { name: "Dhaka", country: "Bangladesh", lat: 23.81, lon: 90.41, typicalAqi: 290, info: "Eenton ke bhatte ka dhuwa aur gaadiyon ka exhaust mukhya kaaran hain." }
         ];
+
+        // Weather Code mapping to human language
+        const weatherCodes = {
+            0: "Clear Sky / Saaf Aasman",
+            1: "Mainly Clear / Saaf",
+            2: "Partly Cloudy / Halke Badal",
+            3: "Overcast / Badal Chaye Hain",
+            45: "Foggy / Kohra",
+            48: "Depositing Rime Fog",
+            51: "Light Drizzle / Halki Boondabandi",
+            53: "Moderate Drizzle / Boondabandi",
+            55: "Dense Drizzle / Tej Boondabandi",
+            61: "Slight Rain / Halki Baarish",
+            63: "Moderate Rain / Baarish",
+            65: "Heavy Rain / Tej Baarish",
+            71: "Slight Snow Fall",
+            73: "Moderate Snow Fall",
+            75: "Heavy Snow Fall",
+            77: "Snow Grains",
+            80: "Slight Rain Showers",
+            81: "Moderate Rain Showers",
+            82: "Violent Rain Showers",
+            85: "Slight Snow Showers",
+            86: "Heavy Snow Showers",
+            95: "Thunderstorm / Bijli Kadakna",
+            96: "Thunderstorm with Slight Hail",
+            99: "Thunderstorm with Heavy Hail"
+        };
 
         function getMockWaterLevel(cityName) {
             const hash = cityName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -445,19 +480,23 @@
         async function fetchData(name, country, lat, lon) {
             try {
                 const [weatherRes, aqiRes] = await Promise.all([
-                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m&timezone=auto`),
+                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code&timezone=auto`),
                     fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi&timezone=auto`)
                 ]);
                 
                 const weatherData = await weatherRes.json();
                 const aqiData = await aqiRes.json();
                 const aqi = aqiData.current.us_aqi;
+                const wCode = weatherData.current.weather_code;
 
                 document.getElementById('display-city').innerText = name;
                 document.getElementById('display-country').innerText = country;
                 document.getElementById('stat-aqi').innerText = aqi;
                 document.getElementById('stat-temp').innerText = Math.round(weatherData.current.temperature_2m);
                 document.getElementById('stat-humid').innerText = Math.round(weatherData.current.relative_humidity_2m);
+                
+                // Weather status update
+                document.getElementById('stat-weather').innerText = weatherCodes[wCode] || "Unknown Condition";
 
                 updateTheme(aqi);
                 updateWaterLevelUI(name); 
@@ -483,19 +522,19 @@
             let color, label, advisory;
             
             if (aqi <= 50) {
-                color = '#10b981'; label = 'Good';
+                color = '#10b981'; label = 'Good / Saaf';
                 advisory = 'Hawa saaf hai! Bahar ghumne aur workout karne ke liye bilkul sahi samay hai.';
             } else if (aqi <= 100) {
-                color = '#facc15'; label = 'Moderate';
+                color = '#facc15'; label = 'Moderate / Sadharan';
                 advisory = 'Hawa thodi pradushit hai. Sensitive logon ko bahar zyada samay nahi bitana chahiye.';
             } else if (aqi <= 150) {
                 color = '#f97316'; label = 'Unhealthy SG';
                 advisory = 'Bache aur buzurg savdhani bartein. Lambi sair ya bhari exercise se bachein.';
             } else if (aqi <= 200) {
-                color = '#ef4444'; label = 'Unhealthy';
+                color = '#ef4444'; label = 'Unhealthy / Ashuddh';
                 advisory = 'AQI khatarnak star par hai. Mask pehne bina bahar na niklein.';
             } else {
-                color = '#9333ea'; label = 'Hazardous';
+                color = '#9333ea'; label = 'Hazardous / Khatarnak';
                 advisory = 'Emergency condition! Ghar ke andar rahein aur air purifier ka upyog karein.';
             }
 
@@ -536,4 +575,3 @@
     </script>
 </body>
 </html>
-
