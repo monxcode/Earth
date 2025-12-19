@@ -54,7 +54,7 @@
 
     <div id="loading-overlay" class="fixed inset-0 flex flex-col items-center justify-center gap-6 transition-opacity duration-1000">
         <div class="w-12 h-12 border-2 border-t-blue-500 border-white/10 rounded-full animate-spin"></div>
-        <p class="text-[10px] uppercase font-bold tracking-[0.4em] text-blue-400">Rendering Planet...</p>
+        <p class="text-[10px] uppercase font-bold tracking-[0.4em] text-blue-400">Planet Taiyar Ho Raha Hai...</p>
     </div>
 
     <div id="canvas-container"></div>
@@ -65,7 +65,7 @@
         <div class="p-8 flex justify-between items-center border-b border-white/5">
             <div>
                 <h2 class="text-xs font-black uppercase tracking-widest text-blue-400">Atmosphere Hub</h2>
-                <p class="text-[9px] opacity-40 uppercase font-bold mt-1">Top 10 Polluted Cities</p>
+                <p class="text-[9px] opacity-40 uppercase font-bold mt-1">Sabse Zyada Polluted Shehar</p>
             </div>
             <button id="close-menu" class="interactive p-2 hover:bg-white/5 rounded-full transition-colors">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -81,7 +81,7 @@
         <div class="border-t border-white/5">
             <div class="p-4">
                 <button onclick="resetRotation()" class="interactive w-full py-4 glass text-[10px] font-black uppercase tracking-widest hover:bg-blue-500/10 transition-all">
-                    Reset Orbital View
+                    View Reset Karein
                 </button>
             </div>
             <!-- Branded Footer -->
@@ -101,7 +101,7 @@
                     <div id="status-dot" class="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.8)]"></div>
                     <div>
                         <h1 class="text-xs font-black uppercase tracking-widest">Global Pulse</h1>
-                        <p class="text-[9px] opacity-40 uppercase font-bold">Atmospheric Telemetry</p>
+                        <p class="text-[9px] opacity-40 uppercase font-bold">Live Data Feed</p>
                     </div>
                 </div>
                 <button id="open-menu" class="interactive glass p-5 px-6 flex items-center gap-3 hover:bg-white/5 transition-all">
@@ -112,7 +112,7 @@
 
             <div class="relative w-full md:w-[450px]">
                 <div class="interactive glass p-1.5 flex items-center pl-4 gap-1">
-                    <input id="location-input" type="text" placeholder="Search any city..." class="bg-transparent border-none outline-none text-sm w-full px-2 placeholder:text-white/20">
+                    <input id="location-input" type="text" placeholder="Shehar search karein..." class="bg-transparent border-none outline-none text-sm w-full px-2 placeholder:text-white/20">
                     
                     <button id="clear-search" class="hidden p-2 hover:bg-white/10 rounded-xl transition-all opacity-40 hover:opacity-100">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -158,20 +158,20 @@
                     </div>
 
                     <div class="p-5 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-[11px] font-medium leading-relaxed text-blue-200/80" id="advisory-text">
-                        Search a city to analyze local air quality, humidity, and receive health recommendations.
+                        Shehar search karein taaki wahan ki air quality aur mausam ki jankari mil sake.
                     </div>
                 </div>
             </div>
 
             <div class="hidden md:block interactive glass p-6 px-10">
                 <p id="clock" class="text-5xl font-black tracking-tighter">00:00:00</p>
-                <p class="text-[9px] font-bold uppercase opacity-30 tracking-[0.3em] text-right mt-1">UTC Synchronization</p>
+                <p class="text-[9px] font-bold uppercase opacity-30 tracking-[0.3em] text-right mt-1">UTC Time Sync</p>
             </div>
         </div>
     </main>
 
     <script>
-        let scene, camera, renderer, globe, clouds, controls, marker, atmosphere;
+        let scene, camera, renderer, globe, clouds, controls, marker;
 
         const topPollutedCities = [
             { name: "Lahore", country: "Pakistan", lat: 31.52, lon: 74.35, typicalAqi: 380, info: "Industrial emissions aur seasonal crop burning ki wajah se pollution zyada hai." },
@@ -206,6 +206,7 @@
 
             const loader = new THREE.TextureLoader();
 
+            // Glow logic removed to provide cleaner look
             const globeGeo = new THREE.SphereGeometry(100, 64, 64);
             const globeMat = new THREE.MeshPhongMaterial({
                 map: loader.load('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg'),
@@ -226,29 +227,6 @@
             });
             clouds = new THREE.Mesh(cloudGeo, cloudMat);
             scene.add(clouds);
-
-            const atmosGeo = new THREE.SphereGeometry(125, 64, 64);
-            const atmosMat = new THREE.ShaderMaterial({
-                vertexShader: `
-                    varying vec3 vNormal;
-                    void main() {
-                        vNormal = normalize(normalMatrix * normal);
-                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                    }
-                `,
-                fragmentShader: `
-                    varying vec3 vNormal;
-                    void main() {
-                        float intensity = pow(0.7 - dot(vNormal, vec3(0, 0, 1.0)), 6.0);
-                        gl_FragColor = vec4(0.3, 0.6, 1.0, 1.0) * intensity;
-                    }
-                `,
-                side: THREE.BackSide,
-                blending: THREE.AdditiveBlending,
-                transparent: true
-            });
-            atmosphere = new THREE.Mesh(atmosGeo, atmosMat);
-            scene.add(atmosphere);
 
             const starsGeo = new THREE.BufferGeometry();
             const starsPos = [];
@@ -294,7 +272,6 @@
                 if(val.length > 0) clearBtn.classList.remove('hidden');
                 else clearBtn.classList.add('hidden');
 
-                // Instant Suggestions: Triggered on 1st character
                 if(val.length < 1) { 
                     box.classList.add('hidden'); 
                     return; 
@@ -317,7 +294,6 @@
                         box.classList.add('hidden');
                     }
                 } catch(error) {
-                    console.error("Geocoding failed", error);
                     box.classList.add('hidden');
                 }
             });
@@ -420,7 +396,7 @@
 
                 updateTheme(aqi, humidity);
                 focusPosition(lat, lon);
-            } catch(e) { console.error(e); }
+            } catch(e) {}
         }
 
         function focusPosition(lat, lon) {
@@ -448,7 +424,7 @@
             else if (aqi <= 150) label = 'Sensitive';
             else label = 'Hazardous';
 
-            const humidStr = humidity > 70 ? "High humidity. " : (humidity < 30 ? "Dry air. " : "");
+            const humidStr = humidity > 70 ? "Hawa mein nami zyada hai. " : (humidity < 30 ? "Hawa khushk hai. " : "");
             
             if (aqi <= 50) advisory = `${humidStr}Hawa saaf hai! Bahar ghoomne ke liye perfect hai.`;
             else if (aqi <= 100) advisory = `${humidStr}Hawa theek hai, lekin sensitive logon ko dhyan dena chahiye.`;
