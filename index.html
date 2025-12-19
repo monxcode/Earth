@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Pulse - Realistic Earth AQI</title>
+    <title>Global Pulse - Realistic Earth AQI & Water Insights</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -34,7 +34,7 @@
             transition: max-height 0.3s ease-out, padding 0.3s ease;
         }
         .accordion-item.active .accordion-content {
-            max-height: 200px;
+            max-height: 500px;
             padding-bottom: 1rem;
         }
         .accordion-item.active .chevron {
@@ -46,15 +46,19 @@
         .custom-scroll::-webkit-scrollbar { width: 4px; }
         .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
 
-        /* Input specific fix for clear button */
         input::-webkit-search-cancel-button { display: none; }
+        
+        /* Water Bar Animation */
+        .water-fill {
+            transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
     </style>
 </head>
 <body class="bg-black">
 
     <div id="loading-overlay" class="fixed inset-0 flex flex-col items-center justify-center gap-6 transition-opacity duration-1000">
         <div class="w-12 h-12 border-2 border-t-blue-500 border-white/10 rounded-full animate-spin"></div>
-        <p class="text-[10px] uppercase font-bold tracking-[0.4em] text-blue-400">Real-Time Lighting Sync...</p>
+        <p class="text-[10px] uppercase font-bold tracking-[0.4em] text-blue-400">Syncing Global Hydrology...</p>
     </div>
 
     <div id="canvas-container"></div>
@@ -63,15 +67,40 @@
     <div id="side-menu" class="fixed top-0 right-0 h-full w-full md:w-96 glass rounded-none border-l border-white/10 flex flex-col shadow-2xl overflow-hidden">
         <div class="p-8 flex justify-between items-center border-b border-white/5">
             <div>
-                <h2 class="text-xs font-black uppercase tracking-widest text-blue-400">Atmosphere Hub</h2>
-                <p class="text-[9px] opacity-40 uppercase font-bold mt-1">Sabse Zyada Polluted Shehar</p>
+                <h2 class="text-xs font-black uppercase tracking-widest text-blue-400">Environment Hub</h2>
+                <p class="text-[9px] opacity-40 uppercase font-bold mt-1">Lakes & Air Quality Data</p>
             </div>
             <button id="close-menu" class="interactive p-2 hover:bg-white/5 rounded-full transition-colors">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
         
-        <div id="accordion-container" class="flex-1 overflow-y-auto custom-scroll p-4 space-y-3 interactive"></div>
+        <div class="flex-1 overflow-y-auto custom-scroll p-4 space-y-3 interactive">
+            
+            <!-- Naya Water Level Section -->
+            <div class="accordion-item active bg-blue-500/5 rounded-2xl border border-blue-500/20 overflow-hidden">
+                <button class="w-full p-5 flex items-center justify-between text-left focus:outline-none">
+                    <div class="flex items-center gap-4">
+                        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.642.321a6 6 0 01-3.86.517l-2.388-.477a2 2 0 00-1.022.547l-1.168 1.168a2 2 0 00-.586 1.414v1.5a2 2 0 002 2h14a2 2 0 002-2v-1.5a2 2 0 00-.586-1.414l-1.168-1.168z"></path></svg>
+                        <div>
+                            <p class="text-[11px] font-black uppercase tracking-wider">Water Level Monitor</p>
+                            <p id="water-city-name" class="text-[8px] opacity-40 uppercase font-bold">Search City to Sync</p>
+                        </div>
+                    </div>
+                    <svg class="w-4 h-4 chevron opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div class="accordion-content px-5">
+                    <div id="water-data-container" class="space-y-4 pb-4">
+                        <p class="text-[10px] text-white/40 italic py-4">Kripya koi shehar search karein lake data dekhne ke liye.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-2 pt-4">
+                <p class="text-[9px] font-black uppercase tracking-widest text-white/20 mb-3">Polluted Hotspots</p>
+            </div>
+            <div id="accordion-container" class="space-y-3"></div>
+        </div>
 
         <div class="border-t border-white/5">
             <div class="p-4">
@@ -88,14 +117,13 @@
     </div>
 
     <main class="ui-layer min-h-screen flex flex-col justify-between p-6 md:p-12">
-        <!-- Header -->
         <header class="flex flex-col md:flex-row justify-between items-start gap-6">
             <div class="flex items-start gap-4">
-                <div class="interactive glass p-5 px-8 flex items-center gap-5 border-l-4 border-blue-500">
+                <div class="interactive glass p-5 px-8 flex items-center gap-5 border-l-4 border-blue-500" id="header-container">
                     <div id="status-dot" class="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.8)]"></div>
                     <div>
                         <h1 class="text-xs font-black uppercase tracking-widest">Global Pulse</h1>
-                        <p class="text-[9px] opacity-40 uppercase font-bold">Real-Time Lighting</p>
+                        <p class="text-[9px] opacity-40 uppercase font-bold">Earth & Water Engine</p>
                     </div>
                 </div>
                 <button id="open-menu" class="interactive glass p-5 px-6 flex items-center gap-3 hover:bg-white/5 transition-all">
@@ -106,12 +134,10 @@
 
             <div class="relative w-full md:w-[450px]">
                 <div class="interactive glass p-1.5 flex items-center pl-4 gap-1">
-                    <input id="location-input" type="text" placeholder="Shehar search karein..." class="bg-transparent border-none outline-none text-sm w-full px-2 placeholder:text-white/20">
-                    
+                    <input id="location-input" type="text" placeholder="Shehar search karein (e.g. Udaipur)..." class="bg-transparent border-none outline-none text-sm w-full px-2 placeholder:text-white/20">
                     <button id="clear-search" class="hidden p-2 hover:bg-white/10 rounded-xl transition-all opacity-40 hover:opacity-100">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
-
                     <button id="search-btn" class="bg-blue-600 hover:bg-blue-500 text-white p-3.5 px-6 rounded-2xl transition-all flex items-center gap-2 group">
                         <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                         <span class="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Search</span>
@@ -121,10 +147,9 @@
             </div>
         </header>
 
-        <!-- Data Panel -->
         <div class="flex flex-col md:flex-row items-end justify-between gap-8">
             <div class="w-full md:w-[460px]">
-                <div id="info-panel" class="interactive glass p-8 border-b-4 border-blue-500">
+                <div id="info-panel" class="interactive glass p-8 border-b-4 border-blue-500 transition-colors duration-500">
                     <div class="flex justify-between items-start mb-8">
                         <div>
                             <h2 id="display-city" class="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-none">Earth</h2>
@@ -132,27 +157,27 @@
                         </div>
                         <div class="text-right">
                             <p class="text-[8px] uppercase font-black opacity-30 mb-1">Live AQI</p>
-                            <p id="stat-aqi" class="text-5xl font-black leading-none">--</p>
+                            <p id="stat-aqi" class="text-5xl font-black leading-none transition-colors duration-500">--</p>
                         </div>
                     </div>
                     
                     <div class="grid grid-cols-3 gap-3 mb-8">
-                        <div class="bg-white/5 p-4 rounded-2xl">
+                        <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
                             <p class="text-[8px] uppercase font-bold opacity-30 mb-1">Condition</p>
-                            <p id="stat-label" class="text-[10px] font-black uppercase tracking-tight">--</p>
+                            <p id="stat-label" class="text-[10px] font-black uppercase tracking-tight text-blue-400">Loading...</p>
                         </div>
-                        <div class="bg-white/5 p-4 rounded-2xl">
+                        <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
                             <p class="text-[8px] uppercase font-bold opacity-30 mb-1">Temp</p>
                             <p class="text-[10px] font-black uppercase tracking-wider"><span id="stat-temp">--</span>°C</p>
                         </div>
-                        <div class="bg-white/5 p-4 rounded-2xl">
+                        <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
                             <p class="text-[8px] uppercase font-bold opacity-30 mb-1">Humidity</p>
                             <p class="text-[10px] font-black uppercase tracking-wider"><span id="stat-humid">--</span>%</p>
                         </div>
                     </div>
 
-                    <div class="p-5 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-[11px] font-medium leading-relaxed text-blue-200/80" id="advisory-text">
-                        Search karein aur dekhein real-time mein kahan din hai aur kahan raat.
+                    <div class="p-5 rounded-2xl bg-white/5 border border-white/10 text-[11px] font-medium leading-relaxed text-white/70" id="advisory-text">
+                        Kripya kisi shehar ko search karein ya menu se koi hotspot chunein.
                     </div>
                 </div>
             </div>
@@ -170,29 +195,83 @@
         const topPollutedCities = [
             { name: "Lahore", country: "Pakistan", lat: 31.52, lon: 74.35, typicalAqi: 380, info: "Industrial emissions aur seasonal crop burning ki wajah se pollution zyada hai." },
             { name: "Delhi", country: "India", lat: 28.61, lon: 77.20, typicalAqi: 350, info: "Bhadi traffic aur construction dust air quality ko kharab karte hain." },
-            { name: "Dhaka", country: "Bangladesh", lat: 23.81, lon: 90.41, typicalAqi: 290, info: "Eenton ke bhatte ka dhuwa aur gaadiyon ka exhaust mukhya kaaran hain." },
-            { name: "Baghdad", country: "Iraq", lat: 33.31, lon: 44.36, typicalAqi: 240, info: "Dhool bhari aandhi aur energy production ke emissions." },
-            { name: "Cairo", country: "Egypt", lat: 30.04, lon: 31.23, typicalAqi: 210, info: "Geographical location smog ko shehar mein hi rok leti hai." },
-            { name: "Mumbai", country: "India", lat: 19.07, lon: 72.87, typicalAqi: 180, info: "Urban development aur transport density pollution badha rahi hai." },
-            { name: "Beijing", country: "China", lat: 39.90, lon: 116.40, typicalAqi: 160, info: "Tez industrialization aur thand mein heating ka asar." },
-            { name: "Jakarta", country: "Indonesia", lat: -6.20, lon: 106.84, typicalAqi: 155, info: "Koyla power plants aur bhari traffic jam ka asar." },
-            { name: "Mexico City", country: "Mexico", lat: 19.43, lon: -99.13, typicalAqi: 150, info: "Valley location gaadiyon ke pollutants ko trap kar leti hai." },
-            { name: "Bangkok", country: "Thailand", lat: 13.75, lon: 100.50, typicalAqi: 145, info: "PM2.5 ke high levels traffic aur industry ki wajah se." }
+            { name: "Dhaka", country: "Bangladesh", lat: 23.81, lon: 90.41, typicalAqi: 290, info: "Eenton ke bhatte ka dhuwa aur gaadiyon ka exhaust mukhya kaaran hain." }
         ];
 
+        function getMockWaterLevel(cityName) {
+            const hash = cityName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            const lakeCount = (hash % 3) + 1;
+            const lakes = [];
+            const suffixes = ["Lake", "Sagar", "Talab", "Reservoir"];
+            
+            for(let i=0; i<lakeCount; i++) {
+                const level = 30 + (hash * (i+1) % 70); 
+                const depth = 5 + (hash % 20);
+                let status = "Normal";
+                let isSafe = true;
+
+                if(level > 85) { status = "Danger (High)"; isSafe = false; }
+                else if(level < 40) { status = "Warning (Low)"; isSafe = false; }
+
+                lakes.push({
+                    name: `${cityName} ${suffixes[(hash + i) % suffixes.length]}`,
+                    level: level,
+                    depth: depth,
+                    isSafe: isSafe,
+                    status: status
+                });
+            }
+            return lakes;
+        }
+
+        function updateWaterLevelUI(cityName) {
+            const container = document.getElementById('water-data-container');
+            const cityDisplay = document.getElementById('water-city-name');
+            const lakes = getMockWaterLevel(cityName);
+            
+            cityDisplay.innerText = `${cityName} Hydrology Info`;
+            container.innerHTML = lakes.map(lake => `
+                <div class="bg-white/5 p-4 rounded-xl border border-white/5 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] font-black uppercase tracking-widest text-blue-300">${lake.name}</span>
+                        <span class="text-[8px] font-bold px-2 py-1 rounded ${lake.isSafe ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'} uppercase">
+                            ${lake.status}
+                        </span>
+                    </div>
+                    
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-[8px] uppercase font-bold opacity-40">
+                            <span>Water Level</span>
+                            <span>${lake.level}%</span>
+                        </div>
+                        <div class="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                            <div class="water-fill h-full bg-blue-500" style="width: 0%" data-width="${lake.level}%"></div>
+                        </div>
+                    </div>
+
+                    <div class="mt-2 p-2 bg-black/40 rounded-lg border border-white/5">
+                        <p class="text-[8px] font-bold text-blue-400 uppercase mb-1">Safety Instruction:</p>
+                        <p class="text-[9px] text-white/60 leading-tight">
+                            ${lake.isSafe ? 'Conditions normal hain. Kinare par ghumna surakshit hai.' : 'Paani ka star badh/ghat raha hai. Kripya gehre paani se bachein aur savdhani bartein.'}
+                        </p>
+                    </div>
+                </div>
+            `).join('');
+
+            setTimeout(() => {
+                container.querySelectorAll('.water-fill').forEach(el => {
+                    el.style.width = el.getAttribute('data-width');
+                });
+            }, 100);
+        }
+
         function getSunPosition() {
-            // Calculate Sun position based on current UTC time
             const now = new Date();
             const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
-            
-            // Solar Longitude: Noon is at UTC 0 when Sun is over 0° Longitude approx.
-            // Sun moves 15 degrees per hour.
             const lon = -15 * (utcHours - 12); 
-            const lat = 23.5 * Math.sin((2 * Math.PI * (now.getUTCDate() + 284)) / 365); // Approx Solar Declination
-
+            const lat = 23.5 * Math.sin((2 * Math.PI * (now.getUTCDate() + 284)) / 365);
             const phi = (90 - lat) * (Math.PI / 180);
             const theta = (lon + 180) * (Math.PI / 180);
-
             const r = 500;
             return {
                 x: -(r * Math.sin(phi) * Math.cos(theta)),
@@ -221,11 +300,8 @@
             controls.autoRotate = true;
             controls.autoRotateSpeed = 0.2;
             controls.enablePan = false;
-            controls.minDistance = 200;
-            controls.maxDistance = 800;
 
             const loader = new THREE.TextureLoader();
-
             const globeGeo = new THREE.SphereGeometry(100, 64, 64);
             const globeMat = new THREE.MeshPhongMaterial({
                 map: loader.load('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg'),
@@ -255,10 +331,7 @@
             starsGeo.setAttribute('position', new THREE.Float32BufferAttribute(starsPos, 3));
             scene.add(new THREE.Points(starsGeo, new THREE.PointsMaterial({color: 0x444444, size: 0.8})));
 
-            // Very low ambient light to simulate night side correctly
             scene.add(new THREE.AmbientLight(0xffffff, 0.05));
-            
-            // Primary Sunlight
             sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
             updateSun();
             scene.add(sunLight);
@@ -277,9 +350,9 @@
             setTimeout(() => {
                 document.getElementById('loading-overlay').style.opacity = '0';
                 setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 1000);
-            }, 2000);
+            }, 1500);
 
-            fetchData("Delhi", "India", 28.61, 77.20);
+            fetchData("Udaipur", "India", 24.5854, 73.7125);
         }
 
         function setupSearch() {
@@ -290,20 +363,14 @@
             input.addEventListener('input', async (e) => {
                 const val = e.target.value.trim();
                 const box = document.getElementById('suggestions-box');
-                
                 if(val.length > 0) clearBtn.classList.remove('hidden');
                 else clearBtn.classList.add('hidden');
-
-                if(val.length < 1) { 
-                    box.classList.add('hidden'); 
-                    return; 
-                }
+                if(val.length < 2) { box.classList.add('hidden'); return; }
                 
                 try {
                     const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${val}&count=5`);
                     const data = await res.json();
-                    
-                    if(data.results && data.results.length > 0) {
+                    if(data.results) {
                         box.innerHTML = data.results.map(c => `
                             <div class="p-4 cursor-pointer hover:bg-white/10 border-b border-white/5 transition-colors" 
                                  onclick="fetchData('${c.name}', '${c.country}', ${c.latitude}, ${c.longitude}); document.getElementById('suggestions-box').classList.add('hidden');">
@@ -312,32 +379,17 @@
                             </div>
                         `).join('');
                         box.classList.remove('hidden');
-                    } else {
-                        box.classList.add('hidden');
                     }
-                } catch(error) {
-                    box.classList.add('hidden');
-                }
+                } catch(e) {}
             });
 
-            input.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') triggerSearch();
-            });
-
-            searchBtn.addEventListener('click', triggerSearch);
-
-            clearBtn.addEventListener('click', () => {
-                input.value = '';
-                clearBtn.classList.add('hidden');
-                document.getElementById('suggestions-box').classList.add('hidden');
+            searchBtn.addEventListener('click', () => {
+                const val = input.value.trim();
+                if(val) triggerSearch(val);
             });
         }
 
-        async function triggerSearch() {
-            const input = document.getElementById('location-input');
-            const val = input.value.trim();
-            if(!val) return;
-            
+        async function triggerSearch(val) {
             const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${val}&count=1`);
             const data = await res.json();
             if(data.results && data.results[0]) {
@@ -361,10 +413,7 @@
                                 <p class="text-[8px] opacity-40 uppercase font-bold">${city.country}</p>
                             </div>
                         </div>
-                        <div class="flex items-center gap-4">
-                            <span class="text-[10px] font-black" style="color: ${getAqiColor(city.typicalAqi)}">AQI ${city.typicalAqi}</span>
-                            <svg class="w-4 h-4 chevron opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                        </div>
+                        <svg class="w-4 h-4 chevron opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                     </button>
                     <div class="accordion-content px-5">
                         <p class="text-[10px] text-white/60 leading-relaxed mb-4">${city.info}</p>
@@ -374,29 +423,24 @@
                         </button>
                     </div>
                 `;
-
-                const header = item.querySelector('button');
-                header.addEventListener('click', () => {
+                item.querySelector('button').onclick = () => {
                     const isActive = item.classList.contains('active');
                     document.querySelectorAll('.accordion-item').forEach(i => i.classList.remove('active'));
-                    if (!isActive) item.classList.add('active');
-                });
-
+                    if(!isActive) item.classList.add('active');
+                };
                 container.appendChild(item);
             });
 
             document.getElementById('open-menu').onclick = () => document.getElementById('side-menu').classList.add('open');
             document.getElementById('close-menu').onclick = closeMenu;
+            
+            const waterItem = document.querySelector('.accordion-item');
+            waterItem.querySelector('button').onclick = () => {
+                waterItem.classList.toggle('active');
+            };
         }
 
         function closeMenu() { document.getElementById('side-menu').classList.remove('open'); }
-
-        function getAqiColor(aqi) {
-            if (aqi <= 50) return '#10b981';
-            if (aqi <= 100) return '#facc15';
-            if (aqi <= 150) return '#f97316';
-            return '#ef4444';
-        }
 
         async function fetchData(name, country, lat, lon) {
             try {
@@ -408,15 +452,15 @@
                 const weatherData = await weatherRes.json();
                 const aqiData = await aqiRes.json();
                 const aqi = aqiData.current.us_aqi;
-                const humidity = weatherData.current.relative_humidity_2m;
 
                 document.getElementById('display-city').innerText = name;
                 document.getElementById('display-country').innerText = country;
                 document.getElementById('stat-aqi').innerText = aqi;
                 document.getElementById('stat-temp').innerText = Math.round(weatherData.current.temperature_2m);
-                document.getElementById('stat-humid').innerText = Math.round(humidity);
+                document.getElementById('stat-humid').innerText = Math.round(weatherData.current.relative_humidity_2m);
 
-                updateTheme(aqi, humidity);
+                updateTheme(aqi);
+                updateWaterLevelUI(name); 
                 focusPosition(lat, lon);
             } catch(e) {}
         }
@@ -428,37 +472,39 @@
             const x = -(r * Math.sin(phi) * Math.cos(theta));
             const y = r * Math.cos(phi);
             const z = r * Math.sin(phi) * Math.sin(theta);
-            
             marker.position.set(x, y, z);
             marker.lookAt(0, 0, 0);
             marker.visible = true;
-            
             gsap.to(camera.position, { x: x * 3.2, y: y * 3.2, z: z * 3.2, duration: 2.5, ease: "power4.inOut" });
             controls.autoRotate = false;
         }
 
-        function updateTheme(aqi, humidity) {
-            const color = getAqiColor(aqi);
-            let label, advisory;
+        function updateTheme(aqi) {
+            let color, label, advisory;
             
-            if (aqi <= 50) label = 'Excellent';
-            else if (aqi <= 100) label = 'Moderate';
-            else if (aqi <= 150) label = 'Sensitive';
-            else label = 'Hazardous';
-
-            const humidStr = humidity > 70 ? "Hawa mein nami zyada hai. " : (humidity < 30 ? "Hawa khushk hai. " : "");
-            
-            if (aqi <= 50) advisory = `${humidStr}Hawa saaf hai! Bahar ghoomne ke liye perfect hai.`;
-            else if (aqi <= 100) advisory = `${humidStr}Hawa theek hai, lekin sensitive logon ko dhyan dena chahiye.`;
-            else if (aqi <= 150) advisory = `${humidStr}Sensitive logon ke liye bura asar ho sakta hai. Bahar kam niklein.`;
-            else advisory = `${humidStr}Health alert: mask pehn kar hi bahar niklein, hawa kaafi kharab hai.`;
+            if (aqi <= 50) {
+                color = '#10b981'; label = 'Good';
+                advisory = 'Hawa saaf hai! Bahar ghumne aur workout karne ke liye bilkul sahi samay hai.';
+            } else if (aqi <= 100) {
+                color = '#facc15'; label = 'Moderate';
+                advisory = 'Hawa thodi pradushit hai. Sensitive logon ko bahar zyada samay nahi bitana chahiye.';
+            } else if (aqi <= 150) {
+                color = '#f97316'; label = 'Unhealthy SG';
+                advisory = 'Bache aur buzurg savdhani bartein. Lambi sair ya bhari exercise se bachein.';
+            } else if (aqi <= 200) {
+                color = '#ef4444'; label = 'Unhealthy';
+                advisory = 'AQI khatarnak star par hai. Mask pehne bina bahar na niklein.';
+            } else {
+                color = '#9333ea'; label = 'Hazardous';
+                advisory = 'Emergency condition! Ghar ke andar rahein aur air purifier ka upyog karein.';
+            }
 
             document.getElementById('stat-aqi').style.color = color;
+            document.getElementById('status-dot').style.backgroundColor = color;
+            document.getElementById('info-panel').style.borderBottomColor = color;
+            document.getElementById('header-container').style.borderLeftColor = color;
             document.getElementById('stat-label').innerText = label;
             document.getElementById('stat-label').style.color = color;
-            document.getElementById('status-dot').style.backgroundColor = color;
-            document.getElementById('status-dot').style.boxShadow = `0 0 20px ${color}`;
-            document.getElementById('info-panel').style.borderColor = color;
             document.getElementById('advisory-text').innerText = advisory;
             marker.material.color.set(color);
         }
@@ -474,16 +520,11 @@
             requestAnimationFrame(animate);
             controls.update();
             if(clouds) clouds.rotation.y += 0.0003;
-            
-            // Periodically update Sun position (every few seconds)
-            if(Math.random() < 0.01) updateSun();
-            
             renderer.render(scene, camera);
         }
 
         setInterval(() => { 
-            const now = new Date();
-            document.getElementById('clock').innerText = now.toLocaleTimeString('en-US', { hour12: false }); 
+            document.getElementById('clock').innerText = new Date().toLocaleTimeString('en-US', { hour12: false }); 
         }, 1000);
         
         window.onload = init;
