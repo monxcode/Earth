@@ -206,7 +206,7 @@
     </main>
 
     <script>
-        let scene, camera, renderer, globe, clouds, controls, marker;
+        let scene, camera, renderer, globe, clouds, controls, marker, pulseMarker;
 
         const pollutedCities = [
             { name: "Lahore", lat: 31.52, lon: 74.35, country: "Pakistan", level: "Hazardous" },
@@ -271,12 +271,26 @@
             sun.position.set(500, 300, 400);
             scene.add(sun);
 
+            // Core Static City Marker
             marker = new THREE.Mesh(
-                new THREE.RingGeometry(2.5, 4, 32),
-                new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.9, side: THREE.DoubleSide })
+                new THREE.CircleGeometry(2.2, 32),
+                new THREE.MeshBasicMaterial({ color: 0x3b82f6, side: THREE.DoubleSide })
             );
             marker.visible = false;
             scene.add(marker);
+
+            // Blinking Pulse Ring Marker
+            pulseMarker = new THREE.Mesh(
+                new THREE.RingGeometry(2.5, 5, 32),
+                new THREE.MeshBasicMaterial({ 
+                    color: 0x3b82f6, 
+                    transparent: true, 
+                    opacity: 0.7, 
+                    side: THREE.DoubleSide 
+                })
+            );
+            pulseMarker.visible = false;
+            scene.add(pulseMarker);
 
             setupLogic();
             animate();
@@ -408,7 +422,10 @@
             aqiText.style.color = color;
             box.innerText = msg;
             card.style.borderBottomColor = color;
+            
+            // Sync highlight colors with AQI status
             marker.material.color.set(color);
+            pulseMarker.material.color.set(color);
 
             const lakeCont = document.getElementById('lake-container');
             const level = 20 + Math.floor(Math.random() * 70);
@@ -427,7 +444,7 @@
         function moveCamera(lat, lon) {
             const phi = (90 - lat) * (Math.PI / 180);
             const theta = (lon + 180) * (Math.PI / 180);
-            const r = 101;
+            const r = 101.5; // Slightly above globe surface
             
             const x = -(r * Math.sin(phi) * Math.cos(theta));
             const y = r * Math.cos(phi);
@@ -436,6 +453,10 @@
             marker.position.set(x, y, z);
             marker.lookAt(0, 0, 0);
             marker.visible = true;
+
+            pulseMarker.position.set(x, y, z);
+            pulseMarker.lookAt(0, 0, 0);
+            pulseMarker.visible = true;
 
             const isMobile = window.innerWidth < 768;
             const dist = isMobile ? 4.5 : 3.5;
@@ -450,6 +471,7 @@
         function resetCamera() {
             controls.autoRotate = true;
             marker.visible = false;
+            pulseMarker.visible = false;
             const isMobile = window.innerWidth < 768;
             gsap.to(camera.position, { x: 0, y: 0, z: isMobile ? 550 : 450, duration: 2 });
         }
@@ -458,6 +480,15 @@
             requestAnimationFrame(animate);
             controls.update();
             if(clouds) clouds.rotation.y += 0.00015;
+
+            // Blinking / Pulsing animation for the searched city
+            if(pulseMarker.visible) {
+                const time = performance.now() * 0.005;
+                const scale = 1 + (Math.sin(time) + 1) * 0.5; // Scale from 1 to 2
+                pulseMarker.scale.set(scale, scale, scale);
+                pulseMarker.material.opacity = 0.8 - ((Math.sin(time) + 1) * 0.4); // Fade out as it expands
+            }
+
             renderer.render(scene, camera);
         }
 
