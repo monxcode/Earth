@@ -37,6 +37,9 @@
         .suggestion-item:last-child { border-bottom: none; }
         .suggestion-item.selected { background: rgba(59, 130, 246, 0.2); border-left: 3px solid #3b82f6; }
         .suggestion-item:hover { background: rgba(255,255,255,0.05); }
+
+        /* Custom Range Input */
+        input[type=range] { accent-color: #3b82f6; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -47,17 +50,70 @@
         <div class="text-[10px] font-black uppercase tracking-[0.5em] text-blue-400">Syncing Global Assets</div>
     </div>
 
-    <!-- Side Sidebar (Menu) -->
-    <div id="side-menu" class="fixed top-0 right-0 h-full w-[320px] glass rounded-none border-l border-white/10 z-[1000] flex flex-col shadow-2xl">
-        <div class="p-6 border-b border-white/5 flex justify-between items-center bg-white/5">
-            <h2 class="text-[10px] font-black uppercase tracking-widest text-red-500">Live Pollution Ranking</h2>
-            <button id="close-menu" class="p-2 text-white/40 hover:text-white transition-colors">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke-width="2.5"/></svg>
-            </button>
+    <!-- Multi-Tab Sidebar (Menu) -->
+    <div id="side-menu" class="fixed top-0 right-0 h-full w-[350px] glass rounded-none border-l border-white/10 z-[1000] flex flex-col shadow-2xl">
+        <div class="p-4 border-b border-white/5 bg-white/5 flex flex-col gap-4">
+            <div class="flex justify-between items-center">
+                <span id="sidebar-title" class="text-[10px] font-black uppercase tracking-widest text-blue-400">Control Center</span>
+                <button id="close-menu" class="p-2 text-white/40 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke-width="2.5"/></svg>
+                </button>
+            </div>
+            <!-- Tab Switcher -->
+            <div class="flex bg-black/40 p-1 rounded-xl">
+                <button id="tab-rank" class="flex-1 py-2 text-[9px] font-black uppercase rounded-lg bg-blue-600 text-white transition-all">Rankings</button>
+                <button id="tab-custom" class="flex-1 py-2 text-[9px] font-black uppercase rounded-lg text-white/40 hover:text-white transition-all">Customize</button>
+            </div>
         </div>
-        <div id="ranked-list" class="flex-1 overflow-y-auto p-4 space-y-3 custom-scroll"></div>
+
+        <!-- Rankings Content -->
+        <div id="rankings-pane" class="flex-1 overflow-y-auto p-4 space-y-3 custom-scroll">
+            <div id="ranked-list"></div>
+        </div>
+
+        <!-- Customization Content -->
+        <div id="custom-pane" class="hidden flex-1 overflow-y-auto p-6 space-y-8 custom-scroll">
+            <section>
+                <h3 class="text-[10px] font-black uppercase text-blue-400 mb-4 tracking-widest">Globe Appearance</h3>
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between mb-2"><label class="text-[11px] font-bold">Rotation Speed</label><span id="val-rot" class="text-[10px] opacity-40">0.5</span></div>
+                        <input type="range" id="input-rot" min="0" max="5" step="0.1" value="0.5" class="w-full">
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-2"><label class="text-[11px] font-bold">Sun Brightness</label><span id="val-bright" class="text-[10px] opacity-40">1.2</span></div>
+                        <input type="range" id="input-bright" min="0" max="3" step="0.1" value="1.2" class="w-full">
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h3 class="text-[10px] font-black uppercase text-blue-400 mb-4 tracking-widest">Environment Layers</h3>
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between mb-2"><label class="text-[11px] font-bold">Cloud Density</label><span id="val-cloud" class="text-[10px] opacity-40">0.4</span></div>
+                        <input type="range" id="input-cloud" min="0" max="1" step="0.1" value="0.4" class="w-full">
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h3 class="text-[10px] font-black uppercase text-blue-400 mb-4 tracking-widest">UI Preferences</h3>
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between mb-2"><label class="text-[11px] font-bold">Glass Opacity</label><span id="val-ui-op" class="text-[10px] opacity-40">0.7</span></div>
+                        <input type="range" id="input-ui-op" min="0.1" max="1" step="0.1" value="0.7" class="w-full">
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-2"><label class="text-[11px] font-bold">Blur Intensity</label><span id="val-ui-blur" class="text-[10px] opacity-40">25px</span></div>
+                        <input type="range" id="input-ui-blur" min="0" max="50" step="1" value="25" class="w-full">
+                    </div>
+                </div>
+            </section>
+        </div>
+
         <div class="p-4 bg-white/5 border-t border-white/5 text-center">
-            <p class="text-[8px] uppercase opacity-40 font-bold tracking-widest">Global Top Cities (High to Low AQI)</p>
+            <p id="sidebar-footer" class="text-[8px] uppercase opacity-40 font-bold tracking-widest">Global Top Cities (High to Low AQI)</p>
         </div>
     </div>
 
@@ -66,13 +122,19 @@
     <!-- UI Overlay -->
     <div class="fixed inset-0 pointer-events-none p-6 flex flex-col justify-between">
         <div class="flex justify-between items-start">
-            <div class="flex gap-3 pointer-events-auto">
+            <div class="flex gap-2 pointer-events-auto">
                 <div class="glass px-5 py-3 border-l-2 border-blue-500">
                     <span class="text-[10px] font-black tracking-[0.4em] uppercase">Pulse.Pro</span>
                 </div>
-                <button id="open-menu" class="interactive glass p-3 px-4 flex items-center gap-2 hover:bg-white/5">
+                <!-- Rankings Button -->
+                <button id="open-rankings" class="interactive glass p-3 px-4 flex items-center gap-2 hover:bg-white/5">
                     <div class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></div>
                     <span class="text-[9px] font-black uppercase tracking-widest">Rankings</span>
+                </button>
+                <!-- New Menu/Customization Button -->
+                <button id="open-custom" class="interactive glass p-3 px-4 flex items-center gap-2 hover:bg-white/5">
+                    <svg class="w-3 h-3 text-blue-400" fill="currentColor" viewBox="0 0 20 20"><path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z"></path></svg>
+                    <span class="text-[9px] font-black uppercase tracking-widest">Menu</span>
                 </button>
             </div>
             
@@ -82,7 +144,6 @@
                     <input id="search-box" type="text" placeholder="Find city..." autocomplete="off" class="bg-transparent border-none outline-none text-xs pl-4 w-full placeholder:text-white/20">
                     <button id="search-btn" class="bg-blue-600 px-4 py-2 rounded-xl text-[9px] font-black uppercase hover:bg-blue-500 transition-colors">Search</button>
                 </div>
-                <!-- Suggestions Dropdown -->
                 <div id="suggestions" class="glass custom-scroll"></div>
             </div>
         </div>
@@ -197,74 +258,103 @@
             const suggestionsEl = document.getElementById('suggestions');
             const sideMenu = document.getElementById('side-menu');
 
-            document.getElementById('open-menu').onclick = () => { sideMenu.classList.add('open'); loadRankings(); };
+            // Tab Switching
+            const tabRank = document.getElementById('tab-rank');
+            const tabCustom = document.getElementById('tab-custom');
+            const paneRank = document.getElementById('rankings-pane');
+            const paneCustom = document.getElementById('custom-pane');
+            const sidebarTitle = document.getElementById('sidebar-title');
+            const sidebarFooter = document.getElementById('sidebar-footer');
+
+            function showTab(type) {
+                if(type === 'rank') {
+                    tabRank.classList.add('bg-blue-600');
+                    tabRank.classList.remove('text-white/40');
+                    tabCustom.classList.remove('bg-blue-600');
+                    tabCustom.classList.add('text-white/40');
+                    paneRank.classList.remove('hidden');
+                    paneCustom.classList.add('hidden');
+                    sidebarTitle.innerText = "Live Pollution Ranking";
+                    sidebarFooter.innerText = "Global Top Cities (High to Low AQI)";
+                    loadRankings();
+                } else {
+                    tabCustom.classList.add('bg-blue-600');
+                    tabCustom.classList.remove('text-white/40');
+                    tabRank.classList.remove('bg-blue-600');
+                    tabRank.classList.add('text-white/40');
+                    paneCustom.classList.remove('hidden');
+                    paneRank.classList.add('hidden');
+                    sidebarTitle.innerText = "Interface Customization";
+                    sidebarFooter.innerText = "System Preferences & Engine Controls";
+                }
+            }
+
+            tabRank.onclick = () => showTab('rank');
+            tabCustom.onclick = () => showTab('custom');
+
+            document.getElementById('open-rankings').onclick = () => { sideMenu.classList.add('open'); showTab('rank'); };
+            document.getElementById('open-custom').onclick = () => { sideMenu.classList.add('open'); showTab('custom'); };
             document.getElementById('close-menu').onclick = () => sideMenu.classList.remove('open');
             
-            // Search Button Click
+            // Search Input Logic
             searchBtn.onclick = handleSearch;
 
-            // Typing & Autocomplete Logic
             searchBox.oninput = async (e) => {
                 const query = e.target.value.trim();
-                if (query.length < 2) {
-                    suggestionsEl.style.display = 'none';
-                    return;
-                }
-
+                if (query.length < 2) { suggestionsEl.style.display = 'none'; return; }
                 try {
                     const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${query}&count=5`);
                     const data = await res.json();
                     suggestionResults = data.results || [];
-                    
-                    if (suggestionResults.length > 0) {
-                        renderSuggestions();
-                    } else {
-                        suggestionsEl.style.display = 'none';
-                    }
-                } catch (err) {
-                    console.error("Geocoding failed", err);
-                }
+                    if (suggestionResults.length > 0) renderSuggestions();
+                    else suggestionsEl.style.display = 'none';
+                } catch (err) { console.error("Geocoding failed", err); }
             };
 
-            // Keyboard Navigation (Up, Down, Enter)
             searchBox.onkeydown = (e) => {
                 const items = document.querySelectorAll('.suggestion-item');
-                
-                if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    selectedSuggestionIndex = Math.min(selectedSuggestionIndex + 1, suggestionResults.length - 1);
-                    updateSelection(items);
-                } 
-                else if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    selectedSuggestionIndex = Math.max(selectedSuggestionIndex - 1, -1);
-                    updateSelection(items);
-                } 
+                if (e.key === 'ArrowDown') { e.preventDefault(); selectedSuggestionIndex = Math.min(selectedSuggestionIndex + 1, suggestionResults.length - 1); updateSelection(items); } 
+                else if (e.key === 'ArrowUp') { e.preventDefault(); selectedSuggestionIndex = Math.max(selectedSuggestionIndex - 1, -1); updateSelection(items); } 
                 else if (e.key === 'Enter') {
                     e.preventDefault();
                     if (selectedSuggestionIndex >= 0 && suggestionResults[selectedSuggestionIndex]) {
                         const r = suggestionResults[selectedSuggestionIndex];
                         fetchData(r.name, r.country_code || "??", r.latitude, r.longitude);
                         closeSuggestions();
-                    } else {
-                        handleSearch();
-                    }
+                    } else handleSearch();
                 }
-                else if (e.key === 'Escape') {
-                    closeSuggestions();
-                }
+                else if (e.key === 'Escape') closeSuggestions();
             };
 
-            // Close suggestions on outside click
-            document.addEventListener('click', (e) => {
-                if (!e.target.closest('.relative')) closeSuggestions();
-            });
+            // Customization Controls
+            document.getElementById('input-rot').oninput = (e) => {
+                const val = parseFloat(e.target.value);
+                controls.autoRotateSpeed = val;
+                document.getElementById('val-rot').innerText = val;
+            };
+            document.getElementById('input-bright').oninput = (e) => {
+                const val = parseFloat(e.target.value);
+                sun.intensity = val;
+                document.getElementById('val-bright').innerText = val;
+            };
+            document.getElementById('input-cloud').oninput = (e) => {
+                const val = parseFloat(e.target.value);
+                clouds.material.opacity = val;
+                document.getElementById('val-cloud').innerText = val;
+            };
+            document.getElementById('input-ui-op').oninput = (e) => {
+                const val = parseFloat(e.target.value);
+                document.querySelectorAll('.glass').forEach(el => el.style.background = `rgba(10, 10, 15, ${val})`);
+                document.getElementById('val-ui-op').innerText = val;
+            };
+            document.getElementById('input-ui-blur').oninput = (e) => {
+                const val = e.target.value;
+                document.querySelectorAll('.glass').forEach(el => el.style.backdropFilter = `blur(${val}px)`);
+                document.getElementById('val-ui-blur').innerText = val + 'px';
+            };
 
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            });
+            document.addEventListener('click', (e) => { if (!e.target.closest('.relative')) closeSuggestions(); });
+            window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
         }
 
         function renderSuggestions() {
@@ -272,39 +362,23 @@
             suggestionsEl.innerHTML = '';
             suggestionsEl.style.display = 'block';
             selectedSuggestionIndex = -1;
-
             suggestionResults.forEach((res, index) => {
                 const div = document.createElement('div');
                 div.className = 'suggestion-item';
-                div.innerHTML = `
-                    <div class="flex flex-col">
-                        <span class="font-bold">${res.name}</span>
-                        <span class="text-[10px] opacity-40 uppercase tracking-tighter">${res.admin1 ? res.admin1 + ', ' : ''}${res.country}</span>
-                    </div>
-                `;
-                div.onclick = () => {
-                    fetchData(res.name, res.country_code || "??", res.latitude, res.longitude);
-                    closeSuggestions();
-                };
+                div.innerHTML = `<div class="flex flex-col"><span class="font-bold">${res.name}</span><span class="text-[10px] opacity-40 uppercase tracking-tighter">${res.admin1 ? res.admin1 + ', ' : ''}${res.country}</span></div>`;
+                div.onclick = () => { fetchData(res.name, res.country_code || "??", res.latitude, res.longitude); closeSuggestions(); };
                 suggestionsEl.appendChild(div);
             });
         }
 
         function updateSelection(items) {
             items.forEach((item, idx) => {
-                if (idx === selectedSuggestionIndex) {
-                    item.classList.add('selected');
-                    item.scrollIntoView({ block: 'nearest' });
-                } else {
-                    item.classList.remove('selected');
-                }
+                if (idx === selectedSuggestionIndex) { item.classList.add('selected'); item.scrollIntoView({ block: 'nearest' }); }
+                else item.classList.remove('selected');
             });
         }
 
-        function closeSuggestions() {
-            document.getElementById('suggestions').style.display = 'none';
-            selectedSuggestionIndex = -1;
-        }
+        function closeSuggestions() { document.getElementById('suggestions').style.display = 'none'; selectedSuggestionIndex = -1; }
 
         async function loadRankings() {
             const listEl = document.getElementById('ranked-list');
@@ -314,36 +388,17 @@
                     const r = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${city.lat}&longitude=${city.lon}&current=us_aqi`).then(res => res.json());
                     return { ...city, aqi: r.current.us_aqi };
                 }));
-                
                 results.sort((a, b) => b.aqi - a.aqi);
-                
                 listEl.innerHTML = '';
                 results.forEach((city, index) => {
                     const item = document.createElement('div');
-                    item.className = "interactive glass p-4 flex justify-between items-center hover:bg-white/5 border-none rounded-2xl";
-                    
+                    item.className = "interactive glass p-4 flex justify-between items-center hover:bg-white/5 border-none rounded-2xl mb-3";
                     let aqiColor = "text-green-400";
                     if(city.aqi > 50) aqiColor = "text-yellow-400";
                     if(city.aqi > 100) aqiColor = "text-orange-400";
                     if(city.aqi > 150) aqiColor = "text-red-400";
-
-                    item.innerHTML = `
-                        <div class="flex items-center gap-3">
-                            <span class="rank-badge ${city.aqi < 50 ? 'opacity-20 grayscale' : ''}">#${index + 1}</span>
-                            <div>
-                                <p class="text-[10px] font-bold uppercase">${city.name}</p>
-                                <p class="text-[8px] opacity-40 uppercase">${city.country}</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-xs font-black ${aqiColor}">${city.aqi}</p>
-                            <p class="text-[7px] uppercase opacity-30 font-bold">AQI</p>
-                        </div>
-                    `;
-                    item.onclick = () => { 
-                        fetchData(city.name, city.country, city.lat, city.lon); 
-                        document.getElementById('side-menu').classList.remove('open'); 
-                    };
+                    item.innerHTML = `<div class="flex items-center gap-3"><span class="rank-badge ${city.aqi < 50 ? 'opacity-20 grayscale' : ''}">#${index + 1}</span><div><p class="text-[10px] font-bold uppercase">${city.name}</p><p class="text-[8px] opacity-40 uppercase">${city.country}</p></div></div><div class="text-right"><p class="text-xs font-black ${aqiColor}">${city.aqi}</p><p class="text-[7px] uppercase opacity-30 font-bold">AQI</p></div>`;
+                    item.onclick = () => { fetchData(city.name, city.country, city.lat, city.lon); document.getElementById('side-menu').classList.remove('open'); };
                     listEl.appendChild(item);
                 });
             } catch(e) { listEl.innerHTML = '<p class="text-red-400 text-[10px] text-center p-4">Sync Failed</p>'; }
@@ -353,9 +408,7 @@
             try {
                 const weather = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code,uv_index`).then(r => r.json());
                 const air = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi`).then(r => r.json());
-                
                 currentCity = { name, country, aqi: air.current.us_aqi, lat, lon };
-                
                 document.getElementById('disp-city').innerText = name;
                 document.getElementById('disp-country').innerText = country;
                 document.getElementById('disp-aqi').innerText = air.current.us_aqi;
@@ -364,28 +417,13 @@
                 document.getElementById('val-wind').innerText = weather.current.wind_speed_10m;
                 document.getElementById('val-uv').innerText = weather.current.uv_index || 0;
                 document.getElementById('val-noise').innerText = Math.floor(40 + Math.random() * 30);
-                
                 const aqi = air.current.us_aqi;
                 const tag = document.getElementById('aqi-tag');
                 const advise = document.getElementById('val-advise');
-                
-                if(aqi <= 50) { 
-                    tag.innerText = "Good"; tag.style.color = "#10b981"; 
-                    advise.innerText = "Safe for outdoor activities. Air quality is ideal."; 
-                }
-                else if(aqi <= 100) { 
-                    tag.innerText = "Moderate"; tag.style.color = "#f59e0b"; 
-                    advise.innerText = "Air quality is acceptable. Sensitive groups should limit outdoor exertion."; 
-                }
-                else if(aqi <= 150) {
-                    tag.innerText = "Unhealthy (SG)"; tag.style.color = "#fb923c";
-                    advise.innerText = "Sensitive groups may experience health effects. Limit outdoor time.";
-                }
-                else { 
-                    tag.innerText = "Unhealthy"; tag.style.color = "#ef4444"; 
-                    advise.innerText = "Health alert: High pollution. Avoid outdoor exertion and use N95 masks."; 
-                }
-                
+                if(aqi <= 50) { tag.innerText = "Good"; tag.style.color = "#10b981"; advise.innerText = "Safe for outdoor activities. Air quality is ideal."; }
+                else if(aqi <= 100) { tag.innerText = "Moderate"; tag.style.color = "#f59e0b"; advise.innerText = "Air quality is acceptable. Sensitive groups should limit outdoor exertion."; }
+                else if(aqi <= 150) { tag.innerText = "Unhealthy (SG)"; tag.style.color = "#fb923c"; advise.innerText = "Sensitive groups may experience health effects. Limit outdoor time."; }
+                else { tag.innerText = "Unhealthy"; tag.style.color = "#ef4444"; advise.innerText = "Health alert: High pollution. Avoid outdoor exertion and use N95 masks."; }
                 moveGlobeTo(lat, lon);
                 document.getElementById('search-box').value = name;
             } catch(e) { console.error("Error fetching data"); }
