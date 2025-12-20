@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Pulse - Solar & Polluted Cities</title>
-    
+    <title>Global Pulse - Polluted Cities Moniter</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    
+
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-black">
@@ -24,16 +24,16 @@
         </div>
         <div class="text-center relative">
             <h1 class="text-3xl font-black uppercase tracking-[0.4em] mb-2 bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
-                GLOBAL PULSE
+                GLOBAL-PULSE 
             </h1>
             <div class="flex flex-col items-center">
                 <p class="pulse-text text-[10px] uppercase font-bold tracking-[0.3em] text-blue-400/80">
-                    Satellite Link Sthapit kiya ja raha hai...
+                    Establishing Satellite Link...
                 </p>
                 <div class="mt-4 w-48 h-[1px] bg-white/10 relative overflow-hidden">
                     <div id="loader-bar" class="absolute left-0 top-0 h-full bg-blue-500 transition-all duration-300" style="width: 0%"></div>
                 </div>
-                <p id="loader-percent" class="mt-2 text-[8px] font-mono text-white/30 tracking-widest">00%</p>
+                <p id="loader-percent" class="mt-2 text-[8px] font-mono text-white/30 tracking-widest">0%</p>
             </div>
         </div>
     </div>
@@ -45,13 +45,13 @@
         <div class="p-6 border-b border-white/5 flex justify-between items-center bg-white/5">
             <div>
                 <h2 class="text-xs font-black uppercase tracking-widest text-blue-400">Control Center</h2>
-                <p class="text-[9px] opacity-40 uppercase font-bold">Prithvi Simulation Settings</p>
+                <p class="text-[9px] opacity-40 uppercase font-bold">Earth Simulation Settings</p>
             </div>
             <button id="close-menu" class="interactive p-2 hover:bg-white/10 rounded-full transition-all text-white/70 hover:text-white">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
-        
+
         <div class="flex-1 overflow-y-auto p-5 space-y-6 custom-scroll">
             <div class="bg-white/5 rounded-2xl p-5 border border-white/10">
                 <div class="flex justify-between items-center mb-4">
@@ -64,13 +64,13 @@
                         <span class="slider"></span>
                     </label>
                 </div>
-                <p id="solar-desc" class="text-[10px] text-white/50 leading-relaxed italic">Static studio light ka upyog ho raha hai. Isay on karein real-time lighting ke liye.</p>
+                <p id="solar-desc" class="text-[10px] text-white/50 leading-relaxed italic">Static lighting active. Enable for real-time lighting.</p>
             </div>
 
             <div class="space-y-4">
                 <button id="toggle-city-list" class="interactive w-full py-4 glass border border-red-500/30 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-red-500/10 transition-all text-red-500">
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z"/></svg>
-                    Duniya ke 10 Sabse Pradushit Sheher
+                    Top 10 Most Polluted Cities
                     <svg id="chevron-icon" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                 </button>
                 <div id="city-list-container" class="space-y-2">
@@ -80,7 +80,7 @@
         </div>
 
         <div class="p-5 border-t border-white/5 bg-white/5">
-            <button onclick="resetCamera()" class="interactive w-full py-4 glass text-[10px] font-black uppercase tracking-widest hover:bg-blue-500/20 transition-all">Camera Reset Karein</button>
+            <button onclick="resetCamera()" class="interactive w-full py-4 glass text-[10px] font-black uppercase tracking-widest hover:bg-blue-500/20 transition-all">Reset Camera</button>
         </div>
     </div>
 
@@ -122,7 +122,7 @@
 
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                     <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
-                        <p class="text-[8px] uppercase font-black opacity-30 mb-1">Tapman</p>
+                        <p class="text-[8px] uppercase font-black opacity-30 mb-1">Tem</p>
                         <p class="text-xl font-black truncate"><span id="temp-val">--</span><span class="text-xs text-blue-400">°C</span></p>
                     </div>
                     <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
@@ -130,21 +130,21 @@
                         <p class="text-xl font-black truncate"><span id="humidity-val">--</span><span class="text-xs text-blue-400">%</span></p>
                     </div>
                     <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
-                        <p class="text-[8px] uppercase font-black opacity-30 mb-1">Hawa</p>
+                        <p class="text-[8px] uppercase font-black opacity-30 mb-1">Wind</p>
                         <p class="text-xl font-black truncate"><span id="wind-val">--</span><span class="text-[10px] text-blue-400 ml-0.5">km/h</span></p>
                     </div>
                     <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
-                        <p class="text-[8px] uppercase font-black opacity-30 mb-1">Mausam</p>
-                        <p id="weather-label" class="text-[9px] font-black uppercase tracking-tight text-blue-400 mt-1 truncate">Jaanch jaari hai...</p>
+                        <p class="text-[8px] uppercase font-black opacity-30 mb-1">Weather</p>
+                        <p id="weather-label" class="text-[9px] font-black uppercase tracking-tight text-blue-400 mt-1 truncate">Checking in progress...</p>
                     </div>
                 </div>
 
                 <div class="p-5 rounded-2xl bg-blue-500/5 border border-blue-500/10">
                     <div class="flex items-center justify-between mb-2">
-                        <p class="text-[9px] font-black uppercase tracking-widest text-white/30">Suraksha Salah</p>
+                        <p class="text-[9px] font-black uppercase tracking-widest text-white/30">Safety Advice</p>
                         <div id="aqi-status" class="risk-badge bg-white/10">--</div>
                     </div>
-                    <p id="advisory-box" class="text-[10px] md:text-[11px] font-semibold leading-relaxed text-white/70 italic">Data load ho raha hai...</p>
+                    <p id="advisory-box" class="text-[10px] md:text-[11px] font-semibold leading-relaxed text-white/70 italic">Loading data...</p>
                 </div>
             </div>
 

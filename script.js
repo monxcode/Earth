@@ -2,9 +2,9 @@ let scene, camera, renderer, globe, clouds, controls, marker, pulseMarker, sunLi
 let isSolarSync = false;
 
 const weatherMap = {
-    0: "Saaf Aasman", 1: "Saaf", 2: "Thode Badal", 3: "Badal", 45: "Kohar",
-    48: "Bhaari Kohar", 51: "Boonda-baandi", 61: "Baarish", 71: "Slight Barf",
-    80: "Bauchaar", 95: "Toofan"
+    0: "Clear Sky", 1: "Clean", 2: "Partly Cloudy", 3: "Clouds", 45: "Fog",
+    48: "Dense Fog", 51: "Drizzle", 61: "Rain", 71: "Light Snow",
+    80: "Rain Showers", 95: "Storm"
 };
 
 const pollutedCities = [
@@ -106,7 +106,7 @@ function finishLoading() {
 function setupUI() {
     const sideMenu = document.getElementById('side-menu');
     const menuBackdrop = document.getElementById('menu-backdrop');
-    
+
     document.getElementById('open-menu').onclick = (e) => {
         e.stopPropagation();
         sideMenu.classList.add('open');
@@ -126,7 +126,7 @@ function setupUI() {
     // Search
     const input = document.getElementById('search-input');
     const dropdown = document.getElementById('results-dropdown');
-    
+
     const triggerSearch = async () => {
         const val = input.value.trim();
         if (val.length < 2) return;
@@ -199,7 +199,7 @@ function processSafety(aqi) {
     let color, label, msg;
 
     if(aqi <= 50) { color = "#10b981"; label = "Saaf / Good"; msg = "Hawa saaf hai!"; }
-    else if(aqi <= 100) { color = "#fbbf24"; label = "Moderate"; msg = "Sensitive log dhyan dein."; }
+    else if(aqi <= 100) { color = "#fbbf24"; label = "Moderate"; msg = "Sensitive log dhyan rakhe."; }
     else if(aqi <= 200) { color = "#f87171"; label = "Unhealthy"; msg = "Mask pehen kar niklein."; }
     else { color = "#a855f7"; label = "Hazardous"; msg = "Bahar jane se bachein!"; }
 
