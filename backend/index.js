@@ -1,50 +1,46 @@
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-dotenv.config();
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+
 app.use(cors());
 app.use(express.json());
 
+// Gemini AI initialize
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// Health / AQI advice endpoint
-app.post("/advice", async (req, res) => {
-  try {
-    const { city, country, aqi } = req.body;
+// Simple route to test
+app.get('/', (req, res) => res.send('AI Backend Running'));
 
-    if (!city || !aqi) {
-      return res.status(400).json({ error: "Missing data" });
+// AI Advisory Route
+app.get('/advice', async (req, res) => {
+    const { city, country, aqi } = req.query;
+
+    if(!city || !country || !aqi) {
+        return res.status(400).json({ advice: "Missing parameters" });
     }
 
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash"
-    });
-
+    // Prompt create karo
     const prompt = `
-City: ${city}, ${country}
-AQI Level: ${aqi}
-
-Give short air-pollution safety advice.
-Language: Simple Hindi + English mix.
-Tone: Helpful, calm, non-scary.
-Max 2–3 lines.
+You are an expert environmental advisor.
+City: ${city}, Country: ${country}, AQI: ${aqi}.
+Provide a short health advisory in simple Hindi for locals based on AQI.
 `;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
 
-    res.json({ advice: text });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Gemini API error" });
-  }
+        res.json({ advice: text });
+    } catch (err) {
+        console.error("AI Error:", err.message);
+        res.status(500).json({ advice: "AI service failed" });
+    }
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () =>
-  console.log("✅ Backend running on port", PORT)
-);
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
