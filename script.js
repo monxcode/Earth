@@ -1,6 +1,31 @@
 let scene, camera, renderer, globe, clouds, controls, marker, pulseMarker, sunLight, ambientLight, globeGroup;
 let isSolarSync = false;
 
+/* ===================== AI ADVICE (NEW) ===================== */
+async function getAIGuidance(city, country, aqi) {
+    try {
+        const res = await fetch("https://YOUR-RENDER-URL/advice", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ city, country, aqi })
+        });
+
+        const data = await res.json();
+
+        if (data.advice) {
+            document.getElementById("advisory-box").innerText = data.advice;
+        } else {
+            document.getElementById("advisory-box").innerText =
+                "AI advice unavailable. Showing basic guidance.";
+        }
+    } catch (err) {
+        console.error(err);
+        document.getElementById("advisory-box").innerText =
+            "AI server offline. Showing basic guidance.";
+    }
+}
+/* =========================================================== */
+
 const weatherMap = {
     0: "Clear Sky", 1: "Clean", 2: "Partly Cloudy", 3: "Clouds", 45: "Fog",
     48: "Dense Fog", 51: "Drizzle", 61: "Rain", 71: "Light Snow",
@@ -40,7 +65,6 @@ function init() {
 
     const loader = new THREE.TextureLoader();
 
-    // Progress bar logic
     let progress = 0;
     const interval = setInterval(() => {
         progress += Math.random() * 20;
@@ -50,7 +74,8 @@ function init() {
             finishLoading();
         }
         document.getElementById('loader-bar').style.width = progress + '%';
-        document.getElementById('loader-percent').innerText = Math.floor(progress).toString().padStart(2, '0') + '%';
+        document.getElementById('loader-percent').innerText =
+            Math.floor(progress).toString().padStart(2, '0') + '%';
     }, 150);
 
     globe = new THREE.Mesh(
@@ -82,11 +107,22 @@ function init() {
     sunLight.position.set(500, 300, 400);
     scene.add(sunLight);
 
-    marker = new THREE.Mesh(new THREE.CircleGeometry(2, 32), new THREE.MeshBasicMaterial({ color: 0x3b82f6, side: THREE.DoubleSide }));
+    marker = new THREE.Mesh(
+        new THREE.CircleGeometry(2, 32),
+        new THREE.MeshBasicMaterial({ color: 0x3b82f6, side: THREE.DoubleSide })
+    );
     marker.visible = false;
     globeGroup.add(marker);
 
-    pulseMarker = new THREE.Mesh(new THREE.RingGeometry(2.5, 5, 32), new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.7, side: THREE.DoubleSide }));
+    pulseMarker = new THREE.Mesh(
+        new THREE.RingGeometry(2.5, 5, 32),
+        new THREE.MeshBasicMaterial({
+            color: 0x3b82f6,
+            transparent: true,
+            opacity: 0.7,
+            side: THREE.DoubleSide
+        })
+    );
     pulseMarker.visible = false;
     globeGroup.add(pulseMarker);
 
@@ -97,7 +133,7 @@ function init() {
 
 function finishLoading() {
     const overlay = document.getElementById('loading-overlay');
-    if(overlay) {
+    if (overlay) {
         overlay.style.opacity = '0';
         setTimeout(() => overlay.style.display = 'none', 800);
     }
@@ -123,7 +159,6 @@ function setupUI() {
         menuBackdrop.classList.remove('open');
     };
 
-    // Search
     const input = document.getElementById('search-input');
     const dropdown = document.getElementById('results-dropdown');
 
@@ -142,12 +177,20 @@ function setupUI() {
     input.onkeydown = (e) => { if (e.key === "Enter") triggerSearch(); };
     document.getElementById('search-go').onclick = triggerSearch;
 
-    // Polluted cities
     const pollutedList = document.getElementById('polluted-city-list');
     pollutedCities.forEach(c => {
         const div = document.createElement('div');
         div.className = "interactive polluted-city-card p-4 rounded-xl cursor-pointer border border-white/5";
-        div.innerHTML = `<div class="flex justify-between items-center"><div><p class="text-[9px] font-black uppercase tracking-widest">${c.name}</p><p class="text-[7px] opacity-40 uppercase font-bold">${c.country}</p></div><span class="text-[7px] font-black px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 uppercase tracking-tighter">${c.level}</span></div>`;
+        div.innerHTML = `
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-[9px] font-black uppercase tracking-widest">${c.name}</p>
+                    <p class="text-[7px] opacity-40 uppercase font-bold">${c.country}</p>
+                </div>
+                <span class="text-[7px] font-black px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 uppercase tracking-tighter">
+                    ${c.level}
+                </span>
+            </div>`;
         div.onclick = () => fetchData(c.name, c.country, c.lat, c.lon);
         pollutedList.appendChild(div);
     });
@@ -155,20 +198,19 @@ function setupUI() {
     document.getElementById('toggle-city-list').onclick = () => {
         const container = document.getElementById('city-list-container');
         container.classList.toggle('show');
-        document.getElementById('chevron-icon').style.transform = container.classList.contains('show') ? 'rotate(180deg)' : 'rotate(0deg)';
+        document.getElementById('chevron-icon').style.transform =
+            container.classList.contains('show') ? 'rotate(180deg)' : 'rotate(0deg)';
     };
 
     document.getElementById('solar-toggle').onchange = (e) => {
         isSolarSync = e.target.checked;
-        document.getElementById('solar-desc').innerText = isSolarSync ? "Synced! Ab real-time lighting hogi." : "Static light ka upyog ho raha hai.";
+        document.getElementById('solar-desc').innerText =
+            isSolarSync ? "Synced! Ab real-time lighting hogi." : "Static light ka upyog ho raha hai.";
         updateSolarPosition();
     };
 }
 
 async function fetchData(name, country, lat, lon) {
-    document.getElementById('results-dropdown').classList.add('hidden');
-    document.getElementById('side-menu').classList.remove('open');
-    document.getElementById('menu-backdrop').classList.remove('open');
     try {
         const [wRes, aRes] = await Promise.all([
             fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=auto`),
@@ -178,7 +220,9 @@ async function fetchData(name, country, lat, lon) {
         const a = await aRes.json();
         updateDisplay(name, country, a.current.us_aqi, w.current);
         moveCamera(lat, lon);
-    } catch(e) { console.error(e); }
+    } catch (e) {
+        console.error(e);
+    }
 }
 
 function updateDisplay(name, country, aqi, weather) {
@@ -188,7 +232,9 @@ function updateDisplay(name, country, aqi, weather) {
     document.getElementById('temp-val').innerText = Math.round(weather.temperature_2m);
     document.getElementById('humidity-val').innerText = weather.relative_humidity_2m;
     document.getElementById('wind-val').innerText = Math.round(weather.wind_speed_10m);
-    document.getElementById('weather-label').innerText = weatherMap[weather.weather_code] || "Variable";
+    document.getElementById('weather-label').innerText =
+        weatherMap[weather.weather_code] || "Variable";
+
     processSafety(aqi);
 }
 
@@ -198,9 +244,9 @@ function processSafety(aqi) {
     const card = document.getElementById('data-card');
     let color, label, msg;
 
-    if(aqi <= 50) { color = "#10b981"; label = "Saaf / Good"; msg = "Hawa saaf hai!"; }
-    else if(aqi <= 100) { color = "#fbbf24"; label = "Moderate"; msg = "Sensitive log dhyan rakhe."; }
-    else if(aqi <= 200) { color = "#f87171"; label = "Unhealthy"; msg = "Mask pehen kar niklein."; }
+    if (aqi <= 50) { color = "#10b981"; label = "Saaf / Good"; msg = "Hawa saaf hai!"; }
+    else if (aqi <= 100) { color = "#fbbf24"; label = "Moderate"; msg = "Sensitive log dhyan rakhe."; }
+    else if (aqi <= 200) { color = "#f87171"; label = "Unhealthy"; msg = "Mask pehen kar niklein."; }
     else { color = "#a855f7"; label = "Hazardous"; msg = "Bahar jane se bachein!"; }
 
     status.innerText = label;
@@ -208,14 +254,23 @@ function processSafety(aqi) {
     document.getElementById('aqi-val').style.color = color;
     box.innerText = msg;
     card.style.borderBottomColor = color;
+
     marker.material.color.set(color);
     pulseMarker.material.color.set(color);
+
+    // 🔥 AI CALL HERE
+    getAIGuidance(
+        document.getElementById("city-name").innerText,
+        document.getElementById("country-name").innerText,
+        aqi
+    );
 }
 
 function moveCamera(lat, lon) {
     const phi = (90 - lat) * (Math.PI / 180);
     const theta = (lon + 180) * (Math.PI / 180);
     const r = 101.5;
+
     const x = -(r * Math.sin(phi) * Math.cos(theta));
     const y = r * Math.cos(phi);
     const z = r * Math.sin(phi) * Math.sin(theta);
@@ -223,19 +278,31 @@ function moveCamera(lat, lon) {
     marker.position.set(x, y, z);
     marker.lookAt(0, 0, 0);
     marker.visible = true;
+
     pulseMarker.position.set(x, y, z);
     pulseMarker.lookAt(0, 0, 0);
     pulseMarker.visible = true;
 
     controls.autoRotate = false;
-    gsap.to(camera.position, { x: x * 3.5, y: y * 3.5, z: z * 3.5, duration: 2, onComplete: () => controls.autoRotate = true });
+    gsap.to(camera.position, {
+        x: x * 3.5,
+        y: y * 3.5,
+        z: z * 3.5,
+        duration: 2,
+        onComplete: () => controls.autoRotate = true
+    });
 }
 
 function resetCamera() {
     controls.autoRotate = true;
     marker.visible = false;
     pulseMarker.visible = false;
-    gsap.to(camera.position, { x: 0, y: 0, z: window.innerWidth < 768 ? 550 : 450, duration: 2 });
+    gsap.to(camera.position, {
+        x: 0,
+        y: 0,
+        z: window.innerWidth < 768 ? 550 : 450,
+        duration: 2
+    });
 }
 
 function updateSolarPosition() {
@@ -248,28 +315,37 @@ function updateSolarPosition() {
     const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60;
     const sunLon = -((utcHours / 24) * 360 - 180);
     const sunLat = 23.5 * Math.sin((2 * Math.PI * 172) / 365);
+
     const phi = (90 - sunLat) * (Math.PI / 180);
     const theta = (sunLon + 180) * (Math.PI / 180);
-    sunLight.position.set(-(500 * Math.sin(phi) * Math.cos(theta)), 500 * Math.cos(phi), 500 * Math.sin(phi) * Math.sin(theta));
+
+    sunLight.position.set(
+        -(500 * Math.sin(phi) * Math.cos(theta)),
+        500 * Math.cos(phi),
+        500 * Math.sin(phi) * Math.sin(theta)
+    );
     ambientLight.intensity = 0.2;
 }
 
 function animate() {
     requestAnimationFrame(animate);
     controls.update();
-    if(clouds) clouds.rotation.y += 0.0001;
-    if(pulseMarker.visible) {
+    if (clouds) clouds.rotation.y += 0.0001;
+
+    if (pulseMarker.visible) {
         const s = 1 + (Math.sin(Date.now() * 0.005) + 1) * 0.5;
         pulseMarker.scale.set(s, s, s);
-        pulseMarker.material.opacity = 0.8 - (s-1);
+        pulseMarker.material.opacity = 0.8 - (s - 1);
     }
+
     renderer.render(scene, camera);
 }
 
 setInterval(() => {
     const d = new Date();
     document.getElementById('digital-clock').innerText = d.toLocaleTimeString('en-GB');
-    document.getElementById('utc-label').innerText = "UTC Engine Sync: " + d.toISOString().split('T')[1].split('.')[0];
+    document.getElementById('utc-label').innerText =
+        "UTC Engine Sync: " + d.toISOString().split('T')[1].split('.')[0];
 }, 1000);
 
 window.onload = init;
@@ -278,46 +354,3 @@ window.onresize = () => {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 };
-//---bad me hata sakte hai---//
-async function getAIGuidance(city, country, aqi) {
-  const res = await fetch("https://YOUR-RENDER-URL/advice", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ city, country, aqi })
-  });
-  const data = await res.json();
-  document.getElementById("advisory-box").innerText = data.advice;
-}
-
-//---isko bhi ---//
-getAIGuidance(
-  document.getElementById("city-name").innerText,
-  document.getElementById("country-name").innerText,
-  aqi
-);
-//----ye bhi--///
-async function getAIGuidance(city, country, aqi) {
-    try {
-        const res = await fetch("https://YOUR-RENDER-URL/advice", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                city: city,
-                country: country,
-                aqi: aqi
-            })
-        });
-
-        const data = await res.json();
-
-        if (data.advice) {
-            document.getElementById("advisory-box").innerText = data.advice;
-        } else {
-            document.getElementById("advisory-box").innerText = "AI advice unavailable.";
-        }
-    } catch (err) {
-        document.getElementById("advisory-box").innerText =
-            "AI server offline. Showing basic advice.";
-        console.error(err);
-    }
-}
