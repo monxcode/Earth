@@ -278,7 +278,7 @@ window.onresize = () => {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 };
-
+//---bad me hata sakte hai---//
 async function getAIGuidance(city, country, aqi) {
   const res = await fetch("https://YOUR-RENDER-URL/advice", {
     method: "POST",
