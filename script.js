@@ -278,3 +278,13 @@ window.onresize = () => {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 };
+
+async function getAIGuidance(city, country, aqi) {
+  const res = await fetch("https://YOUR-RENDER-URL/advice", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ city, country, aqi })
+  });
+  const data = await res.json();
+  document.getElementById("advisory-box").innerText = data.advice;
+}
