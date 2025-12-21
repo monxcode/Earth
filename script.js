@@ -288,3 +288,10 @@ async function getAIGuidance(city, country, aqi) {
   const data = await res.json();
   document.getElementById("advisory-box").innerText = data.advice;
 }
+
+//---isko bhi ---//
+getAIGuidance(
+  document.getElementById("city-name").innerText,
+  document.getElementById("country-name").innerText,
+  aqi
+);
