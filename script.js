@@ -295,3 +295,29 @@ getAIGuidance(
   document.getElementById("country-name").innerText,
   aqi
 );
+//----ye bhi--///
+async function getAIGuidance(city, country, aqi) {
+    try {
+        const res = await fetch("https://YOUR-RENDER-URL/advice", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                city: city,
+                country: country,
+                aqi: aqi
+            })
+        });
+
+        const data = await res.json();
+
+        if (data.advice) {
+            document.getElementById("advisory-box").innerText = data.advice;
+        } else {
+            document.getElementById("advisory-box").innerText = "AI advice unavailable.";
+        }
+    } catch (err) {
+        document.getElementById("advisory-box").innerText =
+            "AI server offline. Showing basic advice.";
+        console.error(err);
+    }
+}
